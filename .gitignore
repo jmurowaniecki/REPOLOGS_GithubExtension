@@ -13,6 +13,8 @@ dist-ssr
 *.local
 .env
 
+repolens.md
+
 
 # Editor directories and files
 .vscode/*

@@ -1,4 +1,4 @@
-import { resolveApiKey, ApiKeyError, saveUserApiKey, getKeyStatus } from '../shared/api-key-manager'
+import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus } from '../shared/api-key-manager'
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
 import { sampleFiles, buildContext } from '../shared/sampler'
 import { analyzeWithGemini } from '../shared/gemini'
@@ -94,11 +94,18 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
   }
 }
 
-chrome.runtime.onMessage.addListener((message: { type: string; key: string }, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: { type: string; key?: string }, _, sendResponse) => {
   if (message.type === 'SAVE_API_KEY') {
-    saveUserApiKey(message.key)
+    saveUserApiKey(message.key ?? '')
       .then(() => sendResponse({ ok: true }))
-      .catch((e) => sendResponse({ ok: false, error: (e as Error).message }))
+      .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
+    return true
+  }
+
+  if (message.type === 'CLEAR_API_KEY') {
+    clearUserApiKey()
+      .then(() => sendResponse({ ok: true }))
+      .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
     return true
   }
 })

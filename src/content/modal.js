@@ -1,75 +1,67 @@
-import type { AnalysisResult } from '../shared/types'
-
-const HOST_ID = 'repolens-modal-host'
-const CIRC = +(2 * Math.PI * 40).toFixed(2) // r=40 → 251.33
-
+const HOST_ID = 'repolens-modal-host';
+const CIRC = +(2 * Math.PI * 40).toFixed(2); // r=40 → 251.33
 // ── Utilities ──────────────────────────────────────────────────────
-
-function esc(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+function esc(s) {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
-
-function isDark(): boolean {
-  const mode = document.documentElement.getAttribute('data-color-mode')
-  if (mode === 'dark') return true
-  if (mode === 'light') return false
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+function isDark() {
+    const mode = document.documentElement.getAttribute('data-color-mode');
+    if (mode === 'dark')
+        return true;
+    if (mode === 'light')
+        return false;
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }
-
 // ── Design helpers ─────────────────────────────────────────────────
-
-function scoreColor(score: number): string {
-  if (score >= 85) return '#1a7f37'
-  if (score >= 70) return '#0969da'
-  if (score >= 55) return '#9a6700'
-  if (score >= 40) return '#bc4c00'
-  return '#cf222e'
+function scoreColor(score) {
+    if (score >= 85)
+        return '#1a7f37';
+    if (score >= 70)
+        return '#0969da';
+    if (score >= 55)
+        return '#9a6700';
+    if (score >= 40)
+        return '#bc4c00';
+    return '#cf222e';
 }
-
-interface GradeInfo { color: string; bg: string; label: string }
-const GRADE_MAP: Record<string, GradeInfo> = {
-  A: { color: '#1a7f37', bg: '#dafbe1', label: 'Excelente' },
-  B: { color: '#0969da', bg: '#ddf4ff', label: 'Bom' },
-  C: { color: '#9a6700', bg: '#fff8c5', label: 'Regular' },
-  D: { color: '#bc4c00', bg: '#fff1e5', label: 'Ruim' },
-  F: { color: '#cf222e', bg: '#ffebe9', label: 'Crítico' },
+const GRADE_MAP = {
+    A: { color: '#1a7f37', bg: '#dafbe1', label: 'Excelente' },
+    B: { color: '#0969da', bg: '#ddf4ff', label: 'Bom' },
+    C: { color: '#9a6700', bg: '#fff8c5', label: 'Regular' },
+    D: { color: '#bc4c00', bg: '#fff1e5', label: 'Ruim' },
+    F: { color: '#cf222e', bg: '#ffebe9', label: 'Crítico' },
+};
+function gradeInfo(grade) {
+    return GRADE_MAP[grade] ?? { color: '#636c76', bg: '#f6f8fa', label: '-' };
 }
-function gradeInfo(grade: string): GradeInfo {
-  return GRADE_MAP[grade] ?? { color: '#636c76', bg: '#f6f8fa', label: '-' }
-}
-
-const ARCH_LABEL: Record<string, string> = {
-  excellent: 'Excelente', good: 'Boa', fair: 'Regular', poor: 'Fraca',
-}
-const PRI_LABEL: Record<string, string> = {
-  high: 'Alta', medium: 'Média', low: 'Baixa',
-}
-const PRI_CLASS: Record<string, string> = {
-  high: 'rl-badge--red', medium: 'rl-badge--amber', low: 'rl-badge--green',
-}
-
+const ARCH_LABEL = {
+    excellent: 'Excelente', good: 'Boa', fair: 'Regular', poor: 'Fraca',
+};
+const PRI_LABEL = {
+    high: 'Alta', medium: 'Média', low: 'Baixa',
+};
+const PRI_CLASS = {
+    high: 'rl-badge--red', medium: 'rl-badge--amber', low: 'rl-badge--green',
+};
 // ── SVG score ring ─────────────────────────────────────────────────
-
-function scoreRing(score: number, color: string): string {
-  const offset = +(CIRC * (1 - score / 100)).toFixed(2)
-  return `
+function scoreRing(score, color) {
+    const offset = +(CIRC * (1 - score / 100)).toFixed(2);
+    return `
     <svg viewBox="0 0 100 100" width="88" height="88" class="rl-ring" aria-hidden="true">
       <circle class="rl-ring-track" cx="50" cy="50" r="40"/>
       <circle class="rl-ring-fill" cx="50" cy="50" r="40"
         stroke="${color}"
         stroke-dasharray="${CIRC}"
         style="--rl-circ:${CIRC};--rl-target:${offset}"/>
-    </svg>`
+    </svg>`;
 }
-
 // ── CSS ────────────────────────────────────────────────────────────
-
-function buildCSS(): string {
-  return `
+function buildCSS() {
+    return `
     :host { all: initial; }
     * { box-sizing: border-box; }
 
@@ -326,31 +318,26 @@ function buildCSS(): string {
       margin-top: 8px;
     }
     .rl-keylnk:hover { background: var(--bg-sub); color: var(--purple); }
-  `
+  `;
 }
-
 // ── HTML builders ──────────────────────────────────────────────────
-
-function wrapOverlay(content: string, dark: boolean, id?: string): string {
-  return `<div class="rl-ov${dark ? ' dk' : ''}"${id ? ` id="${id}"` : ''}>${content}</div>`
+function wrapOverlay(content, dark, id) {
+    return `<div class="rl-ov${dark ? ' dk' : ''}"${id ? ` id="${id}"` : ''}>${content}</div>`;
 }
-
-function keyIcon(): string {
-  return `<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M6.5 0a6.5 6.5 0 0 1 5.25 10.325l3.849 3.851a.75.75 0 0 1-1.06 1.06l-3.851-3.849A6.5 6.5 0 1 1 6.5 0zm0 1.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>`
+function keyIcon() {
+    return `<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M6.5 0a6.5 6.5 0 0 1 5.25 10.325l3.849 3.851a.75.75 0 0 1-1.06 1.06l-3.851-3.849A6.5 6.5 0 1 1 6.5 0zm0 1.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>`;
 }
-
-function keyFormFields(): string {
-  return `
+function keyFormFields() {
+    return `
     <div class="rl-keyrow">
       <input class="rl-keyinput" id="rl-key-input" type="password" placeholder="AIza..." autocomplete="off"/>
       <button class="rl-btn rl-btn--primary" id="rl-save-key">Salvar</button>
     </div>
     <p class="rl-keymsg" id="rl-key-msg"></p>
-  `
+  `;
 }
-
-function loadingHTML(step: string, percent: number, dark: boolean): string {
-  return wrapOverlay(`
+function loadingHTML(step, percent, dark) {
+    return wrapOverlay(`
     <div class="rl-lc">
       <div class="rl-spin"></div>
       <p class="rl-step">${esc(step)}</p>
@@ -358,32 +345,29 @@ function loadingHTML(step: string, percent: number, dark: boolean): string {
       <p class="rl-pct">${percent}%</p>
       <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configurar API key</button>
     </div>
-  `, dark)
+  `, dark);
 }
-
-function errorHTML(message: string, requiresKey: boolean, dark: boolean): string {
-  const action = requiresKey
-    ? `<p class="rl-ehint">
+function errorHTML(message, requiresKey, dark) {
+    const action = requiresKey
+        ? `<p class="rl-ehint">
         Obtenha sua key gratuita em
         <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>
         → <strong>Get API key</strong>
       </p>
       ${keyFormFields()}`
-    : `<button class="rl-btn rl-btn--secondary" id="rl-close">Fechar</button>
-       <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configurar API key</button>`
-
-  return wrapOverlay(`
+        : `<button class="rl-btn rl-btn--secondary" id="rl-close">Fechar</button>
+       <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configurar API key</button>`;
+    return wrapOverlay(`
     <div class="rl-ec">
       <div class="rl-eico">${requiresKey ? '🔑' : '⚠️'}</div>
       <h3 class="rl-ettl">${requiresKey ? 'API key necessária' : 'Erro na análise'}</h3>
       <p class="rl-emsg">${esc(message)}</p>
       ${action}
     </div>
-  `, dark)
+  `, dark);
 }
-
-function keyFormCardHTML(dark: boolean): string {
-  return wrapOverlay(`
+function keyFormCardHTML(dark) {
+    return wrapOverlay(`
     <div class="rl-ec">
       <div class="rl-eico">🔑</div>
       <h3 class="rl-ettl">Configurar API key</h3>
@@ -396,39 +380,31 @@ function keyFormCardHTML(dark: boolean): string {
       ${keyFormFields()}
       <button class="rl-keylnk" id="rl-close">Cancelar</button>
     </div>
-  `, dark)
+  `, dark);
 }
-
-function resultHTML(r: AnalysisResult, dark: boolean): string {
-  const gc = gradeInfo(r.grade)
-  const sc = scoreColor(r.score)
-
-  const li = (text: string, cls: string) =>
-    `<li class="rl-li ${cls}"><span class="rl-dot"></span><span>${esc(text)}</span></li>`
-
-  const strengths = r.strengths.map(s => li(s, 'rl-li--green')).join('')
-  const weaknesses = r.weaknesses.map(w => li(w, 'rl-li--amber')).join('')
-  const inconsistencies = r.inconsistencies.length
-    ? r.inconsistencies.map(i => li(i, 'rl-li--red')).join('')
-    : li('Nenhuma inconsistência detectada', 'rl-li--muted')
-
-  const chips = r.techStack.map(t => `<span class="rl-chip">${esc(t)}</span>`).join('')
-
-  const recs = r.recommendations.map(rec => `
+function resultHTML(r, dark) {
+    const gc = gradeInfo(r.grade);
+    const sc = scoreColor(r.score);
+    const li = (text, cls) => `<li class="rl-li ${cls}"><span class="rl-dot"></span><span>${esc(text)}</span></li>`;
+    const strengths = r.strengths.map(s => li(s, 'rl-li--green')).join('');
+    const weaknesses = r.weaknesses.map(w => li(w, 'rl-li--amber')).join('');
+    const inconsistencies = r.inconsistencies.length
+        ? r.inconsistencies.map(i => li(i, 'rl-li--red')).join('')
+        : li('Nenhuma inconsistência detectada', 'rl-li--muted');
+    const chips = r.techStack.map(t => `<span class="rl-chip">${esc(t)}</span>`).join('');
+    const recs = r.recommendations.map(rec => `
     <li class="rl-rec">
       <span class="rl-badge ${PRI_CLASS[rec.priority] ?? 'rl-badge--green'}">${PRI_LABEL[rec.priority] ?? rec.priority}</span>
       <span class="rl-rtx">${esc(rec.text)}</span>
     </li>
-  `).join('')
-
-  const security = r.securityFlags.length ? `
+  `).join('');
+    const security = r.securityFlags.length ? `
     <section class="rl-sec">
       <h3 class="rl-ttl rl-ttl--red">⚑ Flags de segurança</h3>
       <ul class="rl-ul">${r.securityFlags.map(f => li(f, 'rl-li--red')).join('')}</ul>
     </section>
-  ` : ''
-
-  return wrapOverlay(`
+  ` : '';
+    return wrapOverlay(`
     <div class="rl-modal">
 
       <header class="rl-hd">
@@ -510,99 +486,100 @@ function resultHTML(r: AnalysisResult, dark: boolean): string {
       </footer>
 
     </div>
-  `, dark, 'rl-overlay')
+  `, dark, 'rl-overlay');
 }
-
 // ── DOM management ─────────────────────────────────────────────────
-
-function getOrCreateShadow(): ShadowRoot {
-  let host = document.getElementById(HOST_ID)
-  if (!host) {
-    host = document.createElement('div')
-    host.id = HOST_ID
-    document.body.appendChild(host)
-  }
-  return host.shadowRoot ?? host.attachShadow({ mode: 'open' })
+function getOrCreateShadow() {
+    let host = document.getElementById(HOST_ID);
+    if (!host) {
+        host = document.createElement('div');
+        host.id = HOST_ID;
+        document.body.appendChild(host);
+    }
+    return host.shadowRoot ?? host.attachShadow({ mode: 'open' });
 }
-
-function render(html: string): ShadowRoot {
-  const shadow = getOrCreateShadow()
-  shadow.innerHTML = `<style>${buildCSS()}</style>${html}`
-  return shadow
+function render(html) {
+    const shadow = getOrCreateShadow();
+    shadow.innerHTML = `<style>${buildCSS()}</style>${html}`;
+    return shadow;
 }
-
 // ── Key form wiring (reused across all states) ─────────────────────
-
-function wireKeyFormFields(shadow: ShadowRoot): void {
-  const input = shadow.getElementById('rl-key-input') as HTMLInputElement | null
-  const saveBtn = shadow.getElementById('rl-save-key') as HTMLButtonElement | null
-  const msg = shadow.getElementById('rl-key-msg')
-
-  saveBtn?.addEventListener('click', async () => {
-    const key = input?.value.trim() ?? ''
-    if (!key) {
-      if (msg) { msg.textContent = 'Insira a API key antes de salvar.'; msg.className = 'rl-keymsg rl-keymsg--err' }
-      return
-    }
-    saveBtn.disabled = true
-    if (msg) { msg.textContent = ''; msg.className = 'rl-keymsg' }
-    const res: { ok: boolean; error?: string } = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key })
-    if (res?.ok) {
-      if (msg) { msg.textContent = 'Salva! Clique em Analisar repo novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
-      setTimeout(closeModal, 1800)
-    } else {
-      if (msg) { msg.textContent = res?.error ?? 'Erro ao salvar.'; msg.className = 'rl-keymsg rl-keymsg--err' }
-      saveBtn.disabled = false
-    }
-  })
+function wireKeyFormFields(shadow) {
+    const input = shadow.getElementById('rl-key-input');
+    const saveBtn = shadow.getElementById('rl-save-key');
+    const msg = shadow.getElementById('rl-key-msg');
+    saveBtn?.addEventListener('click', async () => {
+        const key = input?.value.trim() ?? '';
+        if (!key) {
+            if (msg) {
+                msg.textContent = 'Insira a API key antes de salvar.';
+                msg.className = 'rl-keymsg rl-keymsg--err';
+            }
+            return;
+        }
+        saveBtn.disabled = true;
+        if (msg) {
+            msg.textContent = '';
+            msg.className = 'rl-keymsg';
+        }
+        const res = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key });
+        if (res?.ok) {
+            if (msg) {
+                msg.textContent = 'Salva! Clique em Analisar repo novamente.';
+                msg.className = 'rl-keymsg rl-keymsg--ok';
+            }
+            setTimeout(closeModal, 1800);
+        }
+        else {
+            if (msg) {
+                msg.textContent = res?.error ?? 'Erro ao salvar.';
+                msg.className = 'rl-keymsg rl-keymsg--err';
+            }
+            saveBtn.disabled = false;
+        }
+    });
 }
-
-function wireKeyBtn(shadow: ShadowRoot): void {
-  shadow.getElementById('rl-key-btn')?.addEventListener('click', showKeyForm)
+function wireKeyBtn(shadow) {
+    shadow.getElementById('rl-key-btn')?.addEventListener('click', showKeyForm);
 }
-
-function showKeyForm(): void {
-  document.removeEventListener('keydown', onEsc)
-  const shadow = render(keyFormCardHTML(isDark()))
-  shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
-  document.addEventListener('keydown', onEsc)
-  wireKeyFormFields(shadow)
+function showKeyForm() {
+    document.removeEventListener('keydown', onEsc);
+    const shadow = render(keyFormCardHTML(isDark()));
+    shadow.getElementById('rl-close')?.addEventListener('click', closeModal);
+    document.addEventListener('keydown', onEsc);
+    wireKeyFormFields(shadow);
 }
-
 // ── Public API ─────────────────────────────────────────────────────
-
-export function showLoading(step: string, percent: number): void {
-  const shadow = render(loadingHTML(step, percent, isDark()))
-  wireKeyBtn(shadow)
+export function showLoading(step, percent) {
+    const shadow = render(loadingHTML(step, percent, isDark()));
+    wireKeyBtn(shadow);
 }
-
-export function showResult(result: AnalysisResult): void {
-  const shadow = render(resultHTML(result, isDark()))
-  shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
-  shadow.getElementById('rl-overlay')?.addEventListener('click', (e) => {
-    if ((e.target as Element).id === 'rl-overlay') closeModal()
-  })
-  document.addEventListener('keydown', onEsc)
-  wireKeyBtn(shadow)
+export function showResult(result) {
+    const shadow = render(resultHTML(result, isDark()));
+    shadow.getElementById('rl-close')?.addEventListener('click', closeModal);
+    shadow.getElementById('rl-overlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'rl-overlay')
+            closeModal();
+    });
+    document.addEventListener('keydown', onEsc);
+    wireKeyBtn(shadow);
 }
-
-export function showError(message: string, requiresApiKey = false): void {
-  const shadow = render(errorHTML(message, requiresApiKey, isDark()))
-  shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
-  document.addEventListener('keydown', onEsc)
-
-  if (requiresApiKey) {
-    wireKeyFormFields(shadow)
-  } else {
-    wireKeyBtn(shadow)
-  }
+export function showError(message, requiresApiKey = false) {
+    const shadow = render(errorHTML(message, requiresApiKey, isDark()));
+    shadow.getElementById('rl-close')?.addEventListener('click', closeModal);
+    document.addEventListener('keydown', onEsc);
+    if (requiresApiKey) {
+        wireKeyFormFields(shadow);
+    }
+    else {
+        wireKeyBtn(shadow);
+    }
 }
-
-export function closeModal(): void {
-  document.getElementById(HOST_ID)?.remove()
-  document.removeEventListener('keydown', onEsc)
+export function closeModal() {
+    document.getElementById(HOST_ID)?.remove();
+    document.removeEventListener('keydown', onEsc);
 }
-
-function onEsc(e: KeyboardEvent): void {
-  if (e.key === 'Escape') closeModal()
+function onEsc(e) {
+    if (e.key === 'Escape')
+        closeModal();
 }
