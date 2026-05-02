@@ -1,0 +1,500 @@
+import type { AnalysisResult } from '../shared/types'
+
+const HOST_ID = 'repolens-modal-host'
+const CIRC = +(2 * Math.PI * 40).toFixed(2) // r=40 → 251.33
+
+// ── Utilities ──────────────────────────────────────────────────────
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function isDark(): boolean {
+  const mode = document.documentElement.getAttribute('data-color-mode')
+  if (mode === 'dark') return true
+  if (mode === 'light') return false
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+}
+
+// ── Design helpers ─────────────────────────────────────────────────
+
+function scoreColor(score: number): string {
+  if (score >= 85) return '#1a7f37'
+  if (score >= 70) return '#0969da'
+  if (score >= 55) return '#9a6700'
+  if (score >= 40) return '#bc4c00'
+  return '#cf222e'
+}
+
+interface GradeInfo { color: string; bg: string; label: string }
+const GRADE_MAP: Record<string, GradeInfo> = {
+  A: { color: '#1a7f37', bg: '#dafbe1', label: 'Excelente' },
+  B: { color: '#0969da', bg: '#ddf4ff', label: 'Bom' },
+  C: { color: '#9a6700', bg: '#fff8c5', label: 'Regular' },
+  D: { color: '#bc4c00', bg: '#fff1e5', label: 'Ruim' },
+  F: { color: '#cf222e', bg: '#ffebe9', label: 'Crítico' },
+}
+function gradeInfo(grade: string): GradeInfo {
+  return GRADE_MAP[grade] ?? { color: '#636c76', bg: '#f6f8fa', label: '-' }
+}
+
+const ARCH_LABEL: Record<string, string> = {
+  excellent: 'Excelente', good: 'Boa', fair: 'Regular', poor: 'Fraca',
+}
+const PRI_LABEL: Record<string, string> = {
+  high: 'Alta', medium: 'Média', low: 'Baixa',
+}
+const PRI_CLASS: Record<string, string> = {
+  high: 'rl-badge--red', medium: 'rl-badge--amber', low: 'rl-badge--green',
+}
+
+// ── SVG score ring ─────────────────────────────────────────────────
+
+function scoreRing(score: number, color: string): string {
+  const offset = +(CIRC * (1 - score / 100)).toFixed(2)
+  return `
+    <svg viewBox="0 0 100 100" width="88" height="88" class="rl-ring" aria-hidden="true">
+      <circle class="rl-ring-track" cx="50" cy="50" r="40"/>
+      <circle class="rl-ring-fill" cx="50" cy="50" r="40"
+        stroke="${color}"
+        stroke-dasharray="${CIRC}"
+        style="--rl-circ:${CIRC};--rl-target:${offset}"/>
+    </svg>`
+}
+
+// ── CSS ────────────────────────────────────────────────────────────
+
+function buildCSS(): string {
+  return `
+    :host { all: initial; }
+    * { box-sizing: border-box; }
+
+    /* ── Theme tokens (on overlay, inherited by all children) ── */
+    .rl-ov {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --bg:        #ffffff;
+      --bg-sub:    #f6f8fa;
+      --bg-in:     #eaeef2;
+      --bdr:       #d0d7de;
+      --sh:        0 8px 24px rgba(140,149,159,.2), 0 2px 6px rgba(140,149,159,.12);
+      --tx:        #1f2328;
+      --tx-m:      #636c76;
+      --green:     #1a7f37; --green-bg: #dafbe1;
+      --amber:     #9a6700; --amber-bg: #fff8c5;
+      --red:       #cf222e; --red-bg:   #ffebe9;
+      --blue:      #0969da; --blue-bg:  #ddf4ff;
+      --purple:    #8250df; --purple-bg:#fbefff;
+      --r:         12px;
+    }
+    .rl-ov.dk {
+      --bg:        #161b22;
+      --bg-sub:    #0d1117;
+      --bg-in:     #21262d;
+      --bdr:       #30363d;
+      --sh:        0 8px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.3);
+      --tx:        #e6edf3;
+      --tx-m:      #8b949e;
+      --green:     #3fb950; --green-bg: rgba(63,185,80,.13);
+      --amber:     #d29922; --amber-bg: rgba(210,153,34,.13);
+      --red:       #f85149; --red-bg:   rgba(248,81,73,.13);
+      --blue:      #58a6ff; --blue-bg:  rgba(88,166,255,.13);
+      --purple:    #bc8cff; --purple-bg:rgba(188,140,255,.13);
+    }
+
+    /* ── Overlay backdrop ── */
+    .rl-ov {
+      position: fixed; inset: 0; z-index: 999999;
+      background: rgba(1,4,9,.65);
+      backdrop-filter: blur(3px) saturate(120%);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+      animation: rl-fade .18s ease;
+    }
+    @keyframes rl-fade { from { opacity:0 } to { opacity:1 } }
+
+    /* ── Result modal ── */
+    .rl-modal {
+      background: var(--bg); border: 1px solid var(--bdr);
+      border-radius: var(--r); box-shadow: var(--sh);
+      width: 100%; max-width: 680px; max-height: 88vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      animation: rl-up .24s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes rl-up {
+      from { transform: translateY(22px); opacity:0 }
+      to   { transform: translateY(0);    opacity:1 }
+    }
+
+    /* Header */
+    .rl-hd {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 20px; border-bottom: 1px solid var(--bdr);
+      background: var(--bg-sub); flex-shrink: 0;
+    }
+    .rl-brand { display: flex; align-items: center; gap: 8px; }
+    .rl-bname { font-size: 14px; font-weight: 600; color: var(--tx); letter-spacing: -.2px; }
+    .rl-pw {
+      font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 99px;
+      background: var(--purple-bg); color: var(--purple);
+      border: 1px solid currentColor; opacity: .8;
+    }
+    .rl-xbtn {
+      display: flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; padding: 0;
+      border: 1px solid var(--bdr); border-radius: 6px;
+      background: var(--bg); color: var(--tx-m); cursor: pointer;
+      transition: background .1s, color .1s;
+    }
+    .rl-xbtn:hover { background: var(--bg-in); color: var(--tx); }
+
+    /* Scrollable body */
+    .rl-bd { overflow-y: auto; flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Hero: ring + grade + summary ── */
+    .rl-hero { display: flex; align-items: center; gap: 20px; }
+
+    .rl-rw { position: relative; width: 88px; height: 88px; flex-shrink: 0; }
+    .rl-ring { display: block; }
+    .rl-ring-track { fill: none; stroke: var(--bg-in); stroke-width: 8; }
+    .rl-ring-fill {
+      fill: none; stroke-width: 8; stroke-linecap: round;
+      transform-origin: 50% 50%; transform: rotate(-90deg);
+      animation: rl-ring .9s .1s cubic-bezier(.16,1,.3,1) both;
+    }
+    @keyframes rl-ring {
+      from { stroke-dashoffset: var(--rl-circ) }
+      to   { stroke-dashoffset: var(--rl-target) }
+    }
+    .rl-rov {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .rl-snum { font-size: 22px; font-weight: 700; color: var(--tx); line-height: 1; }
+    .rl-ssub { font-size: 10px; color: var(--tx-m); }
+
+    .rl-hi { flex: 1; min-width: 0; }
+    .rl-grow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .rl-gbadge {
+      display: inline-flex; align-items: center;
+      font-size: 12px; font-weight: 600; padding: 3px 10px;
+      border-radius: 99px; border: 1px solid transparent;
+    }
+    .rl-sum { font-size: 13px; color: var(--tx); line-height: 1.6; margin: 0 0 10px; }
+    .rl-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .rl-chip {
+      font-size: 11px; padding: 2px 8px; border-radius: 99px;
+      background: var(--bg-sub); color: var(--tx-m); border: 1px solid var(--bdr);
+    }
+
+    /* Architecture card */
+    .rl-arch {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px; border-radius: 8px;
+      background: var(--bg-sub); border: 1px solid var(--bdr);
+    }
+    .rl-aico { font-size: 18px; line-height: 1.4; flex-shrink: 0; }
+    .rl-ameta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+    .rl-albl { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tx-m); font-weight: 500; }
+    .rl-arat { font-size: 12px; font-weight: 600; color: var(--tx); }
+    .rl-anotes { font-size: 12px; color: var(--tx-m); line-height: 1.55; margin: 0; }
+
+    /* 2-col grid */
+    .rl-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 480px) { .rl-g2 { grid-template-columns: 1fr; } }
+
+    /* Section */
+    .rl-sec { display: flex; flex-direction: column; gap: 7px; }
+    .rl-ttl {
+      font-size: 11px; font-weight: 600; margin: 0; letter-spacing: .05em;
+      text-transform: uppercase; padding-bottom: 6px;
+      border-bottom: 1px solid; display: flex; align-items: center; gap: 5px;
+    }
+    .rl-ttl--green { color: var(--green); border-color: var(--green-bg); }
+    .rl-ttl--amber { color: var(--amber); border-color: var(--amber-bg); }
+    .rl-ttl--red   { color: var(--red);   border-color: var(--red-bg);   }
+    .rl-ttl--blue  { color: var(--blue);  border-color: var(--blue-bg);  }
+
+    /* List */
+    .rl-ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .rl-li {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 12px; line-height: 1.5; padding: 6px 10px; border-radius: 6px; color: var(--tx);
+    }
+    .rl-li--green { background: var(--green-bg); }
+    .rl-li--amber { background: var(--amber-bg); }
+    .rl-li--red   { background: var(--red-bg); }
+    .rl-li--muted { background: var(--bg-sub); color: var(--tx-m); }
+    .rl-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .rl-li--green .rl-dot { background: var(--green); }
+    .rl-li--amber .rl-dot { background: var(--amber); }
+    .rl-li--red   .rl-dot { background: var(--red); }
+    .rl-li--muted .rl-dot { background: var(--tx-m); }
+
+    /* Recommendations */
+    .rl-recs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .rl-rec { display: flex; align-items: flex-start; gap: 8px; color: var(--tx); }
+    .rl-rtx { font-size: 12px; line-height: 1.55; flex: 1; }
+    .rl-badge {
+      display: inline-flex; align-items: center; flex-shrink: 0;
+      font-size: 10px; font-weight: 600; padding: 1px 6px;
+      border-radius: 99px; border: 1px solid; white-space: nowrap; margin-top: 2px;
+    }
+    .rl-badge--red   { background: var(--red-bg);   color: var(--red);   border-color: var(--red);   }
+    .rl-badge--amber { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+    .rl-badge--green { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+
+    /* Footer */
+    .rl-ft {
+      font-size: 11px; color: var(--tx-m); text-align: center;
+      padding: 10px 20px; border-top: 1px solid var(--bdr);
+      background: var(--bg-sub); flex-shrink: 0;
+    }
+
+    /* ── Loading card ── */
+    .rl-lc {
+      background: var(--bg); border: 1px solid var(--bdr);
+      border-radius: var(--r); box-shadow: var(--sh);
+      padding: 40px 48px; text-align: center;
+      min-width: 280px; max-width: 380px;
+      animation: rl-up .22s cubic-bezier(.16,1,.3,1);
+    }
+    .rl-spin {
+      width: 40px; height: 40px; margin: 0 auto 20px;
+      border: 3px solid var(--bg-in); border-top-color: var(--purple);
+      border-radius: 50%; animation: rl-s .65s linear infinite;
+    }
+    @keyframes rl-s { to { transform: rotate(360deg) } }
+    .rl-step { font-size: 13px; font-weight: 500; color: var(--tx); margin: 0 0 14px; }
+    .rl-bar { height: 3px; background: var(--bg-in); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+    .rl-fill {
+      height: 100%; background: linear-gradient(90deg, var(--purple) 0%, #bc8cff 100%);
+      border-radius: 99px; transition: width .4s ease;
+    }
+    .rl-pct { font-size: 11px; color: var(--tx-m); margin: 0; }
+
+    /* ── Error card ── */
+    .rl-ec {
+      background: var(--bg); border: 1px solid var(--bdr);
+      border-radius: var(--r); box-shadow: var(--sh);
+      padding: 36px 40px; text-align: center;
+      max-width: 400px; min-width: 280px;
+      animation: rl-up .22s cubic-bezier(.16,1,.3,1);
+    }
+    .rl-eico { font-size: 36px; margin-bottom: 12px; }
+    .rl-ettl { font-size: 16px; font-weight: 600; color: var(--tx); margin: 0 0 8px; }
+    .rl-emsg { font-size: 13px; color: var(--tx-m); line-height: 1.55; margin: 0 0 14px; }
+    .rl-ehint { font-size: 12px; color: var(--tx-m); line-height: 1.55; margin: 0 0 16px; }
+    .rl-ehint a { color: var(--blue); }
+    .rl-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 6px 16px; font-size: 13px; font-weight: 500;
+      border-radius: 6px; cursor: pointer; border: 1px solid; transition: opacity .12s;
+    }
+    .rl-btn--primary { background: var(--purple); color: #fff; border-color: var(--purple); }
+    .rl-btn--primary:hover { opacity: .87; }
+    .rl-btn--secondary { background: var(--bg); color: var(--tx); border-color: var(--bdr); }
+    .rl-btn--secondary:hover { background: var(--bg-sub); }
+  `
+}
+
+// ── HTML builders ──────────────────────────────────────────────────
+
+function wrapOverlay(content: string, dark: boolean, id?: string): string {
+  return `<div class="rl-ov${dark ? ' dk' : ''}"${id ? ` id="${id}"` : ''}>${content}</div>`
+}
+
+function loadingHTML(step: string, percent: number, dark: boolean): string {
+  return wrapOverlay(`
+    <div class="rl-lc">
+      <div class="rl-spin"></div>
+      <p class="rl-step">${esc(step)}</p>
+      <div class="rl-bar"><div class="rl-fill" style="width:${percent}%"></div></div>
+      <p class="rl-pct">${percent}%</p>
+    </div>
+  `, dark)
+}
+
+function errorHTML(message: string, requiresKey: boolean, dark: boolean): string {
+  const action = requiresKey
+    ? `<p class="rl-ehint">
+        Obtenha sua API key gratuita em
+        <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>
+        → <strong>Get API key</strong>
+      </p>
+      <button class="rl-btn rl-btn--primary" id="rl-open-settings">Configurar API key</button>`
+    : `<button class="rl-btn rl-btn--secondary" id="rl-close">Fechar</button>`
+
+  return wrapOverlay(`
+    <div class="rl-ec">
+      <div class="rl-eico">${requiresKey ? '🔑' : '⚠️'}</div>
+      <h3 class="rl-ettl">${requiresKey ? 'API key necessária' : 'Erro na análise'}</h3>
+      <p class="rl-emsg">${esc(message)}</p>
+      ${action}
+    </div>
+  `, dark)
+}
+
+function resultHTML(r: AnalysisResult, dark: boolean): string {
+  const gc = gradeInfo(r.grade)
+  const sc = scoreColor(r.score)
+
+  const li = (text: string, cls: string) =>
+    `<li class="rl-li ${cls}"><span class="rl-dot"></span><span>${esc(text)}</span></li>`
+
+  const strengths = r.strengths.map(s => li(s, 'rl-li--green')).join('')
+  const weaknesses = r.weaknesses.map(w => li(w, 'rl-li--amber')).join('')
+  const inconsistencies = r.inconsistencies.length
+    ? r.inconsistencies.map(i => li(i, 'rl-li--red')).join('')
+    : li('Nenhuma inconsistência detectada', 'rl-li--muted')
+
+  const chips = r.techStack.map(t => `<span class="rl-chip">${esc(t)}</span>`).join('')
+
+  const recs = r.recommendations.map(rec => `
+    <li class="rl-rec">
+      <span class="rl-badge ${PRI_CLASS[rec.priority] ?? 'rl-badge--green'}">${PRI_LABEL[rec.priority] ?? rec.priority}</span>
+      <span class="rl-rtx">${esc(rec.text)}</span>
+    </li>
+  `).join('')
+
+  const security = r.securityFlags.length ? `
+    <section class="rl-sec">
+      <h3 class="rl-ttl rl-ttl--red">⚑ Flags de segurança</h3>
+      <ul class="rl-ul">${r.securityFlags.map(f => li(f, 'rl-li--red')).join('')}</ul>
+    </section>
+  ` : ''
+
+  return wrapOverlay(`
+    <div class="rl-modal">
+
+      <header class="rl-hd">
+        <div class="rl-brand">
+          <span class="rl-bname">RepoLens</span>
+          <span class="rl-pw">Gemini Flash</span>
+        </div>
+        <button class="rl-xbtn" id="rl-close" aria-label="Fechar">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+            <path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.749.749 0 011.275.326.749.749 0 01-.215.734L9.06 8l3.22 3.22a.749.749 0 01-.326 1.275.749.749 0 01-.734-.215L8 9.06l-3.22 3.22a.751.751 0 01-1.042-.018.751.751 0 01-.018-1.042L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="rl-bd">
+
+        <div class="rl-hero">
+          <div class="rl-rw">
+            ${scoreRing(r.score, sc)}
+            <div class="rl-rov">
+              <span class="rl-snum">${r.score}</span>
+              <span class="rl-ssub">/100</span>
+            </div>
+          </div>
+          <div class="rl-hi">
+            <div class="rl-grow">
+              <span class="rl-gbadge" style="color:${gc.color};background:${gc.bg};border-color:${gc.color}55">
+                ${esc(r.grade)} — ${gc.label}
+              </span>
+            </div>
+            <p class="rl-sum">${esc(r.summary)}</p>
+            ${chips ? `<div class="rl-chips">${chips}</div>` : ''}
+          </div>
+        </div>
+
+        <div class="rl-arch">
+          <span class="rl-aico">🏗</span>
+          <div>
+            <div class="rl-ameta">
+              <span class="rl-albl">Arquitetura</span>
+              <span class="rl-arat">${ARCH_LABEL[r.architecture.rating] ?? r.architecture.rating}</span>
+            </div>
+            <p class="rl-anotes">${esc(r.architecture.notes)}</p>
+          </div>
+        </div>
+
+        <div class="rl-g2">
+          <section class="rl-sec">
+            <h3 class="rl-ttl rl-ttl--green">✓ Pontos fortes</h3>
+            <ul class="rl-ul">${strengths}</ul>
+          </section>
+          <section class="rl-sec">
+            <h3 class="rl-ttl rl-ttl--amber">⚠ Pontos fracos</h3>
+            <ul class="rl-ul">${weaknesses}</ul>
+          </section>
+        </div>
+
+        <section class="rl-sec">
+          <h3 class="rl-ttl rl-ttl--red">✕ Inconsistências</h3>
+          <ul class="rl-ul">${inconsistencies}</ul>
+        </section>
+
+        ${security}
+
+        <section class="rl-sec">
+          <h3 class="rl-ttl rl-ttl--blue">↑ Recomendações</h3>
+          <ul class="rl-recs">${recs}</ul>
+        </section>
+
+      </div>
+
+      <footer class="rl-ft">
+        Análise gerada por IA · Use como referência, não como verdade absoluta
+      </footer>
+
+    </div>
+  `, dark, 'rl-overlay')
+}
+
+// ── DOM management ─────────────────────────────────────────────────
+
+function getOrCreateShadow(): ShadowRoot {
+  let host = document.getElementById(HOST_ID)
+  if (!host) {
+    host = document.createElement('div')
+    host.id = HOST_ID
+    document.body.appendChild(host)
+  }
+  return host.shadowRoot ?? host.attachShadow({ mode: 'open' })
+}
+
+function render(html: string): ShadowRoot {
+  const shadow = getOrCreateShadow()
+  shadow.innerHTML = `<style>${buildCSS()}</style>${html}`
+  return shadow
+}
+
+// ── Public API ─────────────────────────────────────────────────────
+
+export function showLoading(step: string, percent: number): void {
+  render(loadingHTML(step, percent, isDark()))
+}
+
+export function showResult(result: AnalysisResult): void {
+  const shadow = render(resultHTML(result, isDark()))
+  shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
+  shadow.getElementById('rl-overlay')?.addEventListener('click', (e) => {
+    if ((e.target as Element).id === 'rl-overlay') closeModal()
+  })
+  document.addEventListener('keydown', onEsc)
+}
+
+export function showError(message: string, requiresApiKey = false): void {
+  const shadow = render(errorHTML(message, requiresApiKey, isDark()))
+  shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
+  shadow.getElementById('rl-open-settings')?.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'OPEN_POPUP' })
+    closeModal()
+  })
+  document.addEventListener('keydown', onEsc)
+}
+
+export function closeModal(): void {
+  document.getElementById(HOST_ID)?.remove()
+  document.removeEventListener('keydown', onEsc)
+}
+
+function onEsc(e: KeyboardEvent): void {
+  if (e.key === 'Escape') closeModal()
+}
