@@ -107,7 +107,6 @@ export function sampleFiles(
   const {
     maxFiles = 40,
     maxTokensPerFile = 8000,
-    maxTotalTokens = 800_000,
   } = options
 
   const filtered = tree.filter(

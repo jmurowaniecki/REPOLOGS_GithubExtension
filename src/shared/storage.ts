@@ -1,4 +1,4 @@
-import type { StorageState } from './types'
+import type { StorageState, AnalysisResult } from './types'
 
 const DEFAULTS: StorageState = {
   systemKeyUsed: false,
@@ -8,8 +8,8 @@ const DEFAULTS: StorageState = {
 }
 
 export async function getState(): Promise<StorageState> {
-  const result = await chrome.storage.local.get(DEFAULTS)
-  return result as StorageState
+  const result = await chrome.storage.local.get(Object.keys(DEFAULTS))
+  return { ...DEFAULTS, ...(result as Partial<StorageState>) }
 }
 
 export async function setState(partial: Partial<StorageState>): Promise<void> {
@@ -21,7 +21,7 @@ export async function getCachedAnalysis(key: string) {
   return state.cache[key] ?? null
 }
 
-export async function setCachedAnalysis(key: string, result: unknown) {
+export async function setCachedAnalysis(key: string, result: AnalysisResult) {
   const state = await getState()
   const cache = { ...state.cache, [key]: result }
   // Limita cache a 50 entradas para não estourar storage
