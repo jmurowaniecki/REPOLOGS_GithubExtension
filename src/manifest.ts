@@ -26,6 +26,12 @@ export default defineManifest({
       run_at: 'document_idle',
     },
   ],
+  web_accessible_resources: [
+    {
+      resources: ['icons/repolensicon.png'],
+      matches: ['https://github.com/*'],
+    },
+  ],
   permissions: ['storage', 'activeTab'],
   host_permissions: [
     'https://api.github.com/*',
