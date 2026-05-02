@@ -2,8 +2,8 @@ import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStat
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
 import { sampleFiles, buildContext } from '../shared/sampler'
 import { analyzeWithGemini, DEFAULT_MODEL } from '../shared/gemini'
-import { getCachedAnalysis, setCachedAnalysis, setState, getState, setLastResult } from '../shared/storage'
-import type { MessageType, AnalysisResult } from '../shared/types'
+import { setCachedAnalysis, setState, getState, setLastResult } from '../shared/storage'
+import type { MessageType} from '../shared/types'
 
 function sendToTab(tabId: number, message: MessageType) {
   chrome.tabs.sendMessage(tabId, message).catch(() => {
@@ -50,12 +50,6 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
 
     const repoInfo = await getRepoInfo(owner, repo)
     const cacheKey = `${owner}/${repo}@${repoInfo.sha}`
-
-    const cached = await getCachedAnalysis(cacheKey)
-    if (cached) {
-      sendToTab(tabId, { type: 'ANALYSIS_COMPLETE', result: cached as AnalysisResult })
-      return
-    }
 
     sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapeando arquivos...', percent: 15 })
 

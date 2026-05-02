@@ -410,7 +410,7 @@ function loadingHTML(step: string, percent: number, dark: boolean): string {
       <p class="rl-step">${esc(step)}</p>
       <div class="rl-bar"><div class="rl-fill" style="width:${percent}%"></div></div>
       <p class="rl-pct">${percent}%</p>
-      <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configurar API key</button>
+      
     </div>
   `, dark)
 }
