@@ -1,7 +1,18 @@
 import { getKeyStatus } from '../shared/api-key-manager'
+import { getState } from '../shared/storage'
+import { GEMINI_MODELS, DEFAULT_MODEL } from '../shared/gemini'
 
 async function render() {
-  const status = await getKeyStatus()
+  const [status, storageState] = await Promise.all([getKeyStatus(), getState()])
+  const selectedModel = storageState.geminiModel || DEFAULT_MODEL
+
+  const modelItems = GEMINI_MODELS.map(m => `
+    <label class="model-item">
+      <input type="radio" name="gemini-model" value="${m.id}" ${selectedModel === m.id ? 'checked' : ''}/>
+      <span class="model-name">${m.name}</span>
+      <span class="tag ${m.free ? 'tag-free' : 'tag-pro'}">${m.free ? 'Grátis' : 'Pro'}</span>
+    </label>
+  `).join('')
 
   const app = document.getElementById('app')!
   app.innerHTML = `
@@ -51,12 +62,19 @@ async function render() {
 
       ${status.hasUserKey ? `<button class="btn-danger" id="clear-btn">Remover API key</button>` : ''}
 
+      ${status.hasUserKey ? `
+        <div class="model-section">
+          <p class="section-label">Modelo Gemini</p>
+          <div class="model-list">${modelItems}</div>
+        </div>
+      ` : ''}
+
       <div id="msg"></div>
 
     </div>
 
     <div class="footer">
-      Repos públicos · Gemini Flash-Lite · Gratuito
+      Repos públicos · Gratuito
     </div>
   `
 
@@ -86,6 +104,14 @@ async function render() {
   document.getElementById('clear-btn')?.addEventListener('click', async () => {
     await chrome.runtime.sendMessage({ type: 'CLEAR_API_KEY' })
     render()
+  })
+
+  document.querySelectorAll<HTMLInputElement>('input[name="gemini-model"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (radio.checked) {
+        chrome.runtime.sendMessage({ type: 'SAVE_GEMINI_MODEL', model: radio.value })
+      }
+    })
   })
 }
 

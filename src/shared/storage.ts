@@ -3,6 +3,7 @@ import type { StorageState, AnalysisResult } from './types'
 const DEFAULTS: StorageState = {
   systemKeyUsed: false,
   userApiKey: null,
+  geminiModel: 'gemini-2.5-flash',
   analysisCount: 0,
   cache: {},
   lastResults: {},

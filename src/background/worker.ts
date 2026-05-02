@@ -1,7 +1,7 @@
 import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus } from '../shared/api-key-manager'
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
 import { sampleFiles, buildContext } from '../shared/sampler'
-import { analyzeWithGemini } from '../shared/gemini'
+import { analyzeWithGemini, DEFAULT_MODEL } from '../shared/gemini'
 import { getCachedAnalysis, setCachedAnalysis, setState, getState, setLastResult } from '../shared/storage'
 import type { MessageType, AnalysisResult } from '../shared/types'
 
@@ -78,11 +78,15 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
 
     console.log('[Worker] Usando key:', keyResolution.isSystemKey ? 'SYSTEM_KEY' : 'user key', '| key prefix:', keyResolution.key?.slice(0, 8))
 
+    const { geminiModel } = await getState()
+    const model = geminiModel || DEFAULT_MODEL
+
     const result = await analyzeWithGemini(
       keyResolution.key,
       owner,
       repo,
       contextFiles,
+      model,
       (waitSecs) => {
         sendToTab(tabId, {
           type: 'ANALYSIS_PROGRESS',
@@ -104,7 +108,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
   }
 }
 
-chrome.runtime.onMessage.addListener((message: { type: string; key?: string }, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: { type: string; key?: string; model?: string }, _, sendResponse) => {
   if (message.type === 'SAVE_API_KEY') {
     saveUserApiKey(message.key ?? '')
       .then(() => sendResponse({ ok: true }))
@@ -114,6 +118,13 @@ chrome.runtime.onMessage.addListener((message: { type: string; key?: string }, _
 
   if (message.type === 'CLEAR_API_KEY') {
     clearUserApiKey()
+      .then(() => sendResponse({ ok: true }))
+      .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
+    return true
+  }
+
+  if (message.type === 'SAVE_GEMINI_MODEL') {
+    setState({ geminiModel: message.model ?? DEFAULT_MODEL })
       .then(() => sendResponse({ ok: true }))
       .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
     return true

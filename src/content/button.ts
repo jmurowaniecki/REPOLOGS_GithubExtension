@@ -79,8 +79,8 @@ function injectButtonStyles(): void {
       padding: 0;
       margin-left: 6px;
       color: var(--color-btn-text, #c9d1d9c4);
-      background: var(--color-btn-bg, #11141d);
-      border: 0.5px solid var(--color-btn-border, rgba(224, 240, 255, 0.34));
+      background: var(--color-btn-bg, #0d1117);
+      border: 0.5px solid var(--color-btn-border, rgba(224, 240, 255, 0.23));
       border-radius: 6px;
       cursor: pointer;
       opacity: 0;

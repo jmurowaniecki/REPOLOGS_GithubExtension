@@ -1,8 +1,15 @@
 import { buildSystemPrompt, buildUserPrompt } from './prompt'
 import type { AnalysisResult } from './types'
 
-const API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
+
+export const DEFAULT_MODEL = 'gemini-2.5-flash'
+
+export const GEMINI_MODELS: Array<{ id: string; name: string; free: boolean }> = [
+  { id: 'gemini-2.5-flash',      name: 'Gemini 2.5 Flash',      free: true  },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', free: true  },
+  { id: 'gemini-2.5-pro',        name: 'Gemini 2.5 Pro',        free: false },
+]
 
 const RETRY_WAIT_MS = 62_000
 const MAX_RETRIES = 1
@@ -42,6 +49,7 @@ export async function analyzeWithGemini(
   owner: string,
   repo: string,
   files: Array<{ path: string; content: string }>,
+  model: string = DEFAULT_MODEL,
   onRetry?: (waitSecs: number) => void,
 ): Promise<AnalysisResult> {
   const systemPrompt = buildSystemPrompt()
@@ -72,7 +80,7 @@ export async function analyzeWithGemini(
   )
 
   async function attempt(retriesLeft: number): Promise<AnalysisResult> {
-    const res = await fetch(`${API_URL}?key=${apiKey}`, {
+    const res = await fetch(`${API_BASE}/${model}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: bodyStr,

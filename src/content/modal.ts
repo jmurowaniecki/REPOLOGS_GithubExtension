@@ -1,4 +1,5 @@
 import type { AnalysisResult } from '../shared/types'
+import { GEMINI_MODELS, DEFAULT_MODEL } from '../shared/gemini'
 
 const HOST_ID = 'repolens-modal-host'
 const CIRC = +(2 * Math.PI * 40).toFixed(2) // r=40 → 251.33
@@ -331,6 +332,33 @@ function buildCSS(): string {
       margin-top: 8px;
     }
     .rl-keylnk:hover { background: var(--bg-sub); color: var(--purple); }
+
+    /* ── Model selector ── */
+    .rl-model-section { width: 100%; margin-top: 14px; text-align: left; }
+    .rl-model-lbl {
+      font-size: 11px; font-weight: 600; color: var(--tx-m);
+      text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
+    }
+    .rl-model-list {
+      max-height: 152px; overflow-y: auto;
+      border: 1px solid var(--bdr); border-radius: 8px;
+      background: var(--bg-sub);
+    }
+    .rl-model-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; cursor: pointer;
+      border-bottom: 1px solid var(--bdr); transition: background .1s;
+    }
+    .rl-model-item:last-child { border-bottom: none; }
+    .rl-model-item:hover { background: var(--bg-in); }
+    .rl-model-item input[type="radio"] { accent-color: var(--purple); flex-shrink: 0; cursor: pointer; }
+    .rl-model-name { font-size: 12px; color: var(--tx); flex: 1; }
+    .rl-tag {
+      font-size: 10px; font-weight: 600; padding: 1px 6px;
+      border-radius: 99px; border: 1px solid; flex-shrink: 0;
+    }
+    .rl-tag--free { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+    .rl-tag--pro  { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
   `
 }
 
@@ -355,6 +383,22 @@ function keyFormFields(): string {
       <button class="rl-btn rl-btn--primary" id="rl-save-key">Salvar</button>
     </div>
     <p class="rl-keymsg" id="rl-key-msg"></p>
+  `
+}
+
+function modelSelectorHTML(): string {
+  const items = GEMINI_MODELS.map(m => `
+    <label class="rl-model-item">
+      <input type="radio" name="rl-gemini-model" value="${m.id}"/>
+      <span class="rl-model-name">${esc(m.name)}</span>
+      <span class="rl-tag ${m.free ? 'rl-tag--free' : 'rl-tag--pro'}">${m.free ? 'Grátis' : 'Pro'}</span>
+    </label>
+  `).join('')
+  return `
+    <div class="rl-model-section" id="rl-model-section" style="display:none">
+      <p class="rl-model-lbl">Modelo Gemini</p>
+      <div class="rl-model-list">${items}</div>
+    </div>
   `
 }
 
@@ -406,12 +450,13 @@ function keyFormCardHTML(dark: boolean): string {
         → <strong>Get API key</strong>
       </p>
       ${keyFormFields()}
+      ${modelSelectorHTML()}
       <button class="rl-keylnk" id="rl-cancel">Cancelar</button>
     </div>
   `, dark)
 }
 
-function resultHTML(r: AnalysisResult, dark: boolean): string {
+function resultHTML(r: AnalysisResult, dark: boolean, modelName: string): string {
   const gc = gradeInfo(r.grade)
   const sc = scoreColor(r.score)
 
@@ -446,7 +491,7 @@ function resultHTML(r: AnalysisResult, dark: boolean): string {
       <header class="rl-hd">
         <div class="rl-brand">
           <span class="rl-bname">RepoLens</span>
-          <span class="rl-pw">Gemini Flash</span>
+          <span class="rl-pw">${esc(modelName)}</span>
         </div>
         <div class="rl-hactions">
           <button class="rl-xbtn" id="rl-key-btn" aria-label="Configurar API key" title="Configurar API key">
@@ -567,6 +612,26 @@ function wireKeyFormFields(shadow: ShadowRoot): void {
       saveBtn.disabled = false
     }
   })
+
+  // Show model selector only when user already has an API key
+  chrome.storage.local.get(['userApiKey', 'geminiModel'], (data) => {
+    if (!data['userApiKey']) return
+    const modelSection = shadow.getElementById('rl-model-section')
+    if (modelSection) modelSection.style.display = 'block'
+    const selected = (data['geminiModel'] as string | undefined) || DEFAULT_MODEL
+    const radio = shadow.querySelector<HTMLInputElement>(
+      `input[name="rl-gemini-model"][value="${selected}"]`
+    )
+    if (radio) radio.checked = true
+  })
+
+  shadow.querySelectorAll<HTMLInputElement>('input[name="rl-gemini-model"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (radio.checked) {
+        chrome.runtime.sendMessage({ type: 'SAVE_GEMINI_MODEL', model: radio.value })
+      }
+    })
+  })
 }
 
 function wireKeyBtn(shadow: ShadowRoot): void {
@@ -592,13 +657,17 @@ export function showLoading(step: string, percent: number): void {
 
 export function showResult(result: AnalysisResult): void {
   lockScroll()
-  const shadow = render(resultHTML(result, isDark()))
-  shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
-  shadow.getElementById('rl-overlay')?.addEventListener('click', (e) => {
-    if ((e.target as Element).id === 'rl-overlay') closeModal()
+  chrome.storage.local.get(['geminiModel'], (data) => {
+    const modelId = (data['geminiModel'] as string | undefined) || DEFAULT_MODEL
+    const modelName = GEMINI_MODELS.find(m => m.id === modelId)?.name ?? modelId
+    const shadow = render(resultHTML(result, isDark(), modelName))
+    shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
+    shadow.getElementById('rl-overlay')?.addEventListener('click', (e) => {
+      if ((e.target as Element).id === 'rl-overlay') closeModal()
+    })
+    document.addEventListener('keydown', onEsc)
+    wireKeyBtn(shadow)
   })
-  document.addEventListener('keydown', onEsc)
-  wireKeyBtn(shadow)
 }
 
 export function showError(message: string, requiresApiKey = false): void {

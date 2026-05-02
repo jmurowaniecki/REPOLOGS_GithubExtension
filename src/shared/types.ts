@@ -47,6 +47,7 @@ export type MessageType =
 export interface StorageState {
   systemKeyUsed: boolean
   userApiKey: string | null
+  geminiModel: string
   analysisCount: number
   cache: Record<string, AnalysisResult>      // key: "owner/repo@sha"
   lastResults: Record<string, AnalysisResult> // key: "owner/repo"
