@@ -2,7 +2,7 @@ import { buildSystemPrompt, buildUserPrompt } from './prompt'
 import type { AnalysisResult } from './types'
 
 const API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 const RETRY_WAIT_MS = 62_000
 const MAX_RETRIES = 1
