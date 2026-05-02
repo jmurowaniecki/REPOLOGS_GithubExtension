@@ -17,7 +17,7 @@ function injectButtonStyles(): void {
       line-height: 20px;
       letter-spacing: 0.02em;
       color: var(--color-btn-text, #c9d1d9);
-      background: var(--color-btn-bg, #21262d);
+      background: var(--color-btn-bg, #11141d);
       border: 0.5px solid var(--color-btn-border, rgba(224, 240, 255, 0.66));
       border-radius: 6px;
       cursor: pointer;
@@ -36,15 +36,15 @@ function injectButtonStyles(): void {
       top: -2px;
       border-radius: 8px;
       background: linear-gradient(45deg,
-        #21262dc5, #252a30c9, #2c3238b9,
-        rgba(200, 210, 220, 0.18), #2e343a8c,
-        #262b31c0, #21262dc2, #21262db9
+        #0d1117, #0d1117, #13171d,
+        #343d47af, #13171d,
+        #13171d, #0d1117, #0d1117
       );
       background-size: 400%;
       width: calc(100% + 4px);
       height: calc(100% + 4px);
       z-index: -1;
-      animation: repolens-steam 40s linear infinite;
+      animation: repolens-steam 30s linear infinite;
     }
     #${BUTTON_ID}::after {
       filter: blur(8px);
@@ -57,7 +57,7 @@ function injectButtonStyles(): void {
     #${BUTTON_ID}:hover:not(:disabled) {
       background: var(--color-btn-hover-bg, #30363d);
       color: var(--color-fg-default, #e6edf3);
-      border: 0.5px solid var(--color-btn-border, rgb(224, 240, 255));
+      border: 0.5px solid var(--color-btn-border, #a4b3c7);
     }
 
     #${BUTTON_ID}:active:not(:disabled) {
@@ -89,9 +89,9 @@ function parseRepoFromUrl(): { owner: string; repo: string } | null {
 function findInjectionPoint(): Element | null {
   // Tenta o header principal do repo
   return (
-    document.querySelector('.repository-content') ??
-    document.querySelector('#repository-container-header') ??
-    document.querySelector('.pagehead-actions') ??
+    document.querySelector('.OverviewContent-module__Box_6__Y_Yb_') ??
+    document.querySelector('.OverviewContent-module__Box_2__Di8Pb') ??
+    document.querySelector('BorderGrid-row') ??
     null
   )
 }
@@ -108,7 +108,7 @@ export function injectButton(onClick: (owner: string, repo: string) => void): vo
   injectButtonStyles()
 
   const wrapper = document.createElement('div')
-  wrapper.style.cssText = 'display: inline-flex; margin: 8px 0; padding: 0 16px;'
+  wrapper.style.cssText = 'display: inline-flex; padding: 0 16px;'
 
   const btn = document.createElement('button')
   btn.id = BUTTON_ID
@@ -130,5 +130,5 @@ export function setButtonLoading(loading: boolean): void {
   if (!btn) return
   btn.disabled = loading
   const span = btn.querySelector('span')
-  if (span) span.textContent = loading ? 'Analisando...' : 'Analisar repo'
+  if (span) span.textContent = loading ? 'Analisando...' : 'REPOLENS'
 }

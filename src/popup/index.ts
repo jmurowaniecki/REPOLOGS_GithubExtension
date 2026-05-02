@@ -1,9 +1,7 @@
 import { getKeyStatus } from '../shared/api-key-manager'
-import { getState } from '../shared/storage'
 
 async function render() {
   const status = await getKeyStatus()
-  const state = await getState()
 
   const app = document.getElementById('app')!
   app.innerHTML = `
@@ -39,7 +37,8 @@ async function render() {
           type="password"
           id="api-key-input"
           placeholder="AIza..."
-          value="${state.userApiKey ?? ''}"
+          value=""
+          autocomplete="new-password"
         />
         <p class="input-hint">
           Obtenha grátis em

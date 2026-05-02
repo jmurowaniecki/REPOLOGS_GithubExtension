@@ -261,6 +261,7 @@ function buildCSS(): string {
       border-radius: var(--r); box-shadow: var(--sh);
       padding: 40px 48px; text-align: center;
       min-width: 280px; max-width: 380px;
+      position: relative;
       animation: rl-up .22s cubic-bezier(.16,1,.3,1);
     }
     .rl-spin {
@@ -283,7 +284,11 @@ function buildCSS(): string {
       border-radius: var(--r); box-shadow: var(--sh);
       padding: 36px 40px; text-align: center;
       max-width: 400px; min-width: 280px;
+      position: relative;
       animation: rl-up .22s cubic-bezier(.16,1,.3,1);
+    }
+    .rl-xbtn--corner {
+      position: absolute; top: 10px; right: 10px;
     }
     .rl-eico { font-size: 36px; margin-bottom: 12px; }
     .rl-ettl { font-size: 16px; font-weight: 600; color: var(--tx); margin: 0 0 8px; }
@@ -335,6 +340,10 @@ function wrapOverlay(content: string, dark: boolean, id?: string): string {
   return `<div class="rl-ov${dark ? ' dk' : ''}"${id ? ` id="${id}"` : ''}>${content}</div>`
 }
 
+function closeXIcon(): string {
+  return `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.749.749 0 011.275.326.749.749 0 01-.215.734L9.06 8l3.22 3.22a.749.749 0 01-.326 1.275.749.749 0 01-.734-.215L8 9.06l-3.22 3.22a.751.751 0 01-1.042-.018.751.751 0 01-.018-1.042L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>`
+}
+
 function keyIcon(): string {
   return `<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M6.5 0a6.5 6.5 0 0 1 5.25 10.325l3.849 3.851a.75.75 0 0 1-1.06 1.06l-3.851-3.849A6.5 6.5 0 1 1 6.5 0zm0 1.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>`
 }
@@ -342,7 +351,7 @@ function keyIcon(): string {
 function keyFormFields(): string {
   return `
     <div class="rl-keyrow">
-      <input class="rl-keyinput" id="rl-key-input" type="password" placeholder="AIza..." autocomplete="off"/>
+      <input class="rl-keyinput" id="rl-key-input" type="password" placeholder="AIza..." autocomplete="new-password"/>
       <button class="rl-btn rl-btn--primary" id="rl-save-key">Salvar</button>
     </div>
     <p class="rl-keymsg" id="rl-key-msg"></p>
@@ -352,6 +361,7 @@ function keyFormFields(): string {
 function loadingHTML(step: string, percent: number, dark: boolean): string {
   return wrapOverlay(`
     <div class="rl-lc">
+      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Fechar">${closeXIcon()}</button>
       <div class="rl-spin"></div>
       <p class="rl-step">${esc(step)}</p>
       <div class="rl-bar"><div class="rl-fill" style="width:${percent}%"></div></div>
@@ -369,11 +379,12 @@ function errorHTML(message: string, requiresKey: boolean, dark: boolean): string
         → <strong>Get API key</strong>
       </p>
       ${keyFormFields()}`
-    : `<button class="rl-btn rl-btn--secondary" id="rl-close">Fechar</button>
+    : `<button class="rl-btn rl-btn--secondary" id="rl-close-btn">Fechar</button>
        <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configurar API key</button>`
 
   return wrapOverlay(`
     <div class="rl-ec">
+      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Fechar">${closeXIcon()}</button>
       <div class="rl-eico">${requiresKey ? '🔑' : '⚠️'}</div>
       <h3 class="rl-ettl">${requiresKey ? 'API key necessária' : 'Erro na análise'}</h3>
       <p class="rl-emsg">${esc(message)}</p>
@@ -385,6 +396,7 @@ function errorHTML(message: string, requiresKey: boolean, dark: boolean): string
 function keyFormCardHTML(dark: boolean): string {
   return wrapOverlay(`
     <div class="rl-ec">
+      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Fechar">${closeXIcon()}</button>
       <div class="rl-eico">🔑</div>
       <h3 class="rl-ettl">Configurar API key</h3>
       <p class="rl-emsg">Cole sua Gemini API key abaixo.</p>
@@ -394,7 +406,7 @@ function keyFormCardHTML(dark: boolean): string {
         → <strong>Get API key</strong>
       </p>
       ${keyFormFields()}
-      <button class="rl-keylnk" id="rl-close">Cancelar</button>
+      <button class="rl-keylnk" id="rl-cancel">Cancelar</button>
     </div>
   `, dark)
 }
@@ -548,7 +560,7 @@ function wireKeyFormFields(shadow: ShadowRoot): void {
     if (msg) { msg.textContent = ''; msg.className = 'rl-keymsg' }
     const res: { ok: boolean; error?: string } = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key })
     if (res?.ok) {
-      if (msg) { msg.textContent = 'Salva! Clique em Analisar repo novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
+      if (msg) { msg.textContent = 'Salva! Clique em REPOLENS novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
       setTimeout(closeModal, 1800)
     } else {
       if (msg) { msg.textContent = res?.error ?? 'Erro ao salvar.'; msg.className = 'rl-keymsg rl-keymsg--err' }
@@ -565,6 +577,7 @@ function showKeyForm(): void {
   document.removeEventListener('keydown', onEsc)
   const shadow = render(keyFormCardHTML(isDark()))
   shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
+  shadow.getElementById('rl-cancel')?.addEventListener('click', closeModal)
   document.addEventListener('keydown', onEsc)
   wireKeyFormFields(shadow)
 }
@@ -573,6 +586,7 @@ function showKeyForm(): void {
 
 export function showLoading(step: string, percent: number): void {
   const shadow = render(loadingHTML(step, percent, isDark()))
+  shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
   wireKeyBtn(shadow)
 }
 
@@ -589,6 +603,7 @@ export function showResult(result: AnalysisResult): void {
 export function showError(message: string, requiresApiKey = false): void {
   const shadow = render(errorHTML(message, requiresApiKey, isDark()))
   shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
+  shadow.getElementById('rl-close-btn')?.addEventListener('click', closeModal)
   document.addEventListener('keydown', onEsc)
 
   if (requiresApiKey) {
