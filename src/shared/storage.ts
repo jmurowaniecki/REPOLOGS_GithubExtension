@@ -1,0 +1,33 @@
+import type { StorageState } from './types'
+
+const DEFAULTS: StorageState = {
+  systemKeyUsed: false,
+  userApiKey: null,
+  analysisCount: 0,
+  cache: {},
+}
+
+export async function getState(): Promise<StorageState> {
+  const result = await chrome.storage.local.get(DEFAULTS)
+  return result as StorageState
+}
+
+export async function setState(partial: Partial<StorageState>): Promise<void> {
+  await chrome.storage.local.set(partial)
+}
+
+export async function getCachedAnalysis(key: string) {
+  const state = await getState()
+  return state.cache[key] ?? null
+}
+
+export async function setCachedAnalysis(key: string, result: unknown) {
+  const state = await getState()
+  const cache = { ...state.cache, [key]: result }
+  // Limita cache a 50 entradas para não estourar storage
+  const keys = Object.keys(cache)
+  if (keys.length > 50) {
+    delete cache[keys[0]]
+  }
+  await setState({ cache })
+}
