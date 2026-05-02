@@ -1,8 +1,9 @@
-import { injectButton, setButtonLoading } from './button'
+import { injectButton, injectEyeButton, showEyeButton, setButtonLoading } from './button'
 import { showLoading, showResult, showError, closeModal } from './modal'
+import { getLastResult } from '../shared/storage'
 import type { MessageType } from '../shared/types'
 
-function init() {
+async function init() {
   injectButton((owner, repo) => {
     setButtonLoading(true)
     showLoading('Iniciando análise...', 0)
@@ -12,6 +13,15 @@ function init() {
       repo,
     } satisfies MessageType)
   })
+
+  const repoMatch = location.pathname.match(/^\/([^/]+)\/([^/]+)/)
+  if (repoMatch) {
+    const lastResult = await getLastResult(`${repoMatch[1]}/${repoMatch[2]}`)
+    if (lastResult) {
+      injectEyeButton(() => showResult(lastResult))
+      showEyeButton()
+    }
+  }
 }
 
 chrome.runtime.onMessage.addListener((message: MessageType) => {
@@ -22,6 +32,8 @@ chrome.runtime.onMessage.addListener((message: MessageType) => {
   if (message.type === 'ANALYSIS_COMPLETE') {
     setButtonLoading(false)
     showResult(message.result)
+    injectEyeButton(() => showResult(message.result))
+    showEyeButton()
   }
 
   if (message.type === 'ANALYSIS_ERROR') {

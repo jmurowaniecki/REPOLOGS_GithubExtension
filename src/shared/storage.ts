@@ -5,6 +5,7 @@ const DEFAULTS: StorageState = {
   userApiKey: null,
   analysisCount: 0,
   cache: {},
+  lastResults: {},
 }
 
 export async function getState(): Promise<StorageState> {
@@ -30,4 +31,14 @@ export async function setCachedAnalysis(key: string, result: AnalysisResult) {
     delete cache[keys[0]]
   }
   await setState({ cache })
+}
+
+export async function getLastResult(repoKey: string): Promise<AnalysisResult | null> {
+  const state = await getState()
+  return state.lastResults[repoKey] ?? null
+}
+
+export async function setLastResult(repoKey: string, result: AnalysisResult): Promise<void> {
+  const state = await getState()
+  await setState({ lastResults: { ...state.lastResults, [repoKey]: result } })
 }

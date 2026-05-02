@@ -1,4 +1,6 @@
 const BUTTON_ID = 'repolens-analyze-btn'
+const EYE_BUTTON_ID = 'repolens-eye-btn'
+const WRAPPER_ID = 'repolens-wrapper'
 const ALREADY_INJECTED = 'repolens-injected'
 const STYLE_ID = 'repolens-btn-styles'
 
@@ -67,6 +69,35 @@ function injectButtonStyles(): void {
       opacity: 0.6;
       cursor: not-allowed;
     }
+
+    #${EYE_BUTTON_ID} {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      margin-left: 6px;
+      color: var(--color-btn-text, #c9d1d9c4);
+      background: var(--color-btn-bg, #11141d);
+      border: 0.5px solid var(--color-btn-border, rgba(224, 240, 255, 0.34));
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+    #${EYE_BUTTON_ID}.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #${EYE_BUTTON_ID}:hover {
+      background: var(--color-btn-hover-bg, #30363d);
+      color: var(--color-fg-default, #e6edf3);
+    }
+    #${EYE_BUTTON_ID}:active {
+      transform: translateY(1px);
+    }
   `
   document.head.appendChild(style)
 }
@@ -108,7 +139,8 @@ export function injectButton(onClick: (owner: string, repo: string) => void): vo
   injectButtonStyles()
 
   const wrapper = document.createElement('div')
-  wrapper.style.cssText = 'display: inline-flex; padding: 0 16px;'
+  wrapper.id = WRAPPER_ID
+  wrapper.style.cssText = 'display: inline-flex; align-items: center; padding: 0 16px;'
 
   const btn = document.createElement('button')
   btn.id = BUTTON_ID
@@ -123,6 +155,29 @@ export function injectButton(onClick: (owner: string, repo: string) => void): vo
 
   // Insere antes do primeiro filho do target
   target.insertBefore(wrapper, target.firstChild)
+}
+
+export function injectEyeButton(onClick: () => void): void {
+  const wrapper = document.getElementById(WRAPPER_ID)
+  if (!wrapper) return
+
+  let eye = document.getElementById(EYE_BUTTON_ID) as HTMLButtonElement | null
+  if (eye) {
+    eye.onclick = onClick
+    return
+  }
+
+  eye = document.createElement('button')
+  eye.id = EYE_BUTTON_ID
+  eye.title = 'Ver última análise'
+  eye.setAttribute('aria-label', 'Ver última análise')
+  eye.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
+  eye.onclick = onClick
+  wrapper.appendChild(eye)
+}
+
+export function showEyeButton(): void {
+  document.getElementById(EYE_BUTTON_ID)?.classList.add('visible')
 }
 
 export function setButtonLoading(loading: boolean): void {

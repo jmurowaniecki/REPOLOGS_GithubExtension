@@ -48,5 +48,6 @@ export interface StorageState {
   systemKeyUsed: boolean
   userApiKey: string | null
   analysisCount: number
-  cache: Record<string, AnalysisResult>  // key: "owner/repo@sha"
+  cache: Record<string, AnalysisResult>      // key: "owner/repo@sha"
+  lastResults: Record<string, AnalysisResult> // key: "owner/repo"
 }

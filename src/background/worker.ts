@@ -2,7 +2,7 @@ import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStat
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
 import { sampleFiles, buildContext } from '../shared/sampler'
 import { analyzeWithGemini } from '../shared/gemini'
-import { getCachedAnalysis, setCachedAnalysis, setState, getState } from '../shared/storage'
+import { getCachedAnalysis, setCachedAnalysis, setState, getState, setLastResult } from '../shared/storage'
 import type { MessageType, AnalysisResult } from '../shared/types'
 
 function sendToTab(tabId: number, message: MessageType) {
@@ -95,6 +95,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
     const state = await getState()
     await setState({ analysisCount: state.analysisCount + 1 })
     await setCachedAnalysis(cacheKey, result)
+    await setLastResult(`${owner}/${repo}`, result)
 
     sendToTab(tabId, { type: 'ANALYSIS_COMPLETE', result })
   } catch (e) {
