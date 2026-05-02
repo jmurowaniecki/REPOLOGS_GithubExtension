@@ -31,14 +31,17 @@ export async function resolveApiKey(): Promise<KeyResolution> {
     return { key: state.userApiKey, isSystemKey: false }
   }
 
-  if (!state.systemKeyUsed) {
-    // Primeira e única vez usando a key do sistema
+  const hasSystemKey = typeof SYSTEM_KEY === 'string' && SYSTEM_KEY.length > 0
+
+  if (hasSystemKey && !state.systemKeyUsed) {
     await setState({ systemKeyUsed: true })
     return { key: SYSTEM_KEY, isSystemKey: true }
   }
 
   throw new ApiKeyError(
-    'Você já usou sua análise gratuita. Insira sua API key do Google Gemini para continuar.',
+    hasSystemKey
+      ? 'Você já usou sua análise gratuita. Insira sua API key do Google Gemini para continuar.'
+      : 'Insira sua API key do Google Gemini para continuar.',
     true,
   )
 }

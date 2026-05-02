@@ -76,6 +76,8 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
 
     sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Analisando com IA...', percent: 65 })
 
+    console.log('[Worker] Usando key:', keyResolution.isSystemKey ? 'SYSTEM_KEY' : 'user key', '| key prefix:', keyResolution.key?.slice(0, 8))
+
     const result = await analyzeWithGemini(
       keyResolution.key,
       owner,

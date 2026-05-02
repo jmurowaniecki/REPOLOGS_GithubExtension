@@ -63,6 +63,16 @@ const IGNORE_PATTERNS = [
   /\.map$/,
   /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/,
   /\.(pdf|zip|tar|gz|mp4|mp3)$/,
+  // Arquivos de teste — verbosos e irrelevantes para análise arquitetural
+  /\.(test|spec)\.(ts|tsx|js|jsx|mjs|py|rb|go|java|cs|cpp|swift|kt|rs)$/,
+  /\/__tests__\//,
+  /\/tests?\//,
+  /\/specs?\//,
+  /\/e2e\//,
+  /\/cypress\//,
+  /\/playwright\//,
+  /\/fixtures?\//,
+  /\/mocks?\//,
 ]
 
 function getExtension(path: string): string {
@@ -136,6 +146,34 @@ export function sampleFiles(
   return selected
 }
 
+const MAX_LINES_PER_FILE = 150
+const DEP_KEYS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
+
+function smartJsonContent(path: string, content: string): string {
+  const filename = path.split('/').pop()
+  if (filename !== 'package.json') return content
+  try {
+    const parsed = JSON.parse(content) as Record<string, unknown>
+    const summary: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(parsed)) {
+      if (DEP_KEYS.includes(k) && v && typeof v === 'object') {
+        summary[k] = Object.keys(v as object)
+      } else {
+        summary[k] = v
+      }
+    }
+    return JSON.stringify(summary, null, 2)
+  } catch {
+    return content
+  }
+}
+
+function topLines(content: string, maxLines: number): string {
+  const lines = content.split('\n')
+  if (lines.length <= maxLines) return content
+  return lines.slice(0, maxLines).join('\n') + '\n... [truncado]'
+}
+
 export function buildContext(
   files: Array<{ path: string; content: string }>,
   maxTotalTokens: number = 800_000,
@@ -144,18 +182,18 @@ export function buildContext(
   let totalTokens = 0
 
   for (const file of files) {
-    const tokens = estimateTokens(file.content)
+    const content = topLines(smartJsonContent(file.path, file.content), MAX_LINES_PER_FILE)
+    const tokens = estimateTokens(content)
     if (totalTokens + tokens > maxTotalTokens) {
-      // Inclui o arquivo truncado se ainda tiver espaço
       const available = maxTotalTokens - totalTokens
       if (available > 500) {
-        const truncated = file.content.slice(0, available * 4)
+        const truncated = content.slice(0, available * 4)
         result.push({ path: file.path, content: truncated + '\n... [truncado]' })
         totalTokens = maxTotalTokens
       }
       break
     }
-    result.push(file)
+    result.push({ path: file.path, content })
     totalTokens += tokens
   }
 

@@ -2,7 +2,7 @@ import { buildSystemPrompt, buildUserPrompt } from './prompt'
 import type { AnalysisResult } from './types'
 
 const API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent'
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 interface GeminiResponse {
   candidates: Array<{
@@ -11,7 +11,7 @@ interface GeminiResponse {
     }
     finishReason: string
   }>
-  error?: { message: string; code: number }
+  error?: { message: string; code: number; status: string }
 }
 
 function parseGeminiResult(raw: string): AnalysisResult {
@@ -66,16 +66,41 @@ export async function analyzeWithGemini(
     body: JSON.stringify(body),
   })
 
-  const data: GeminiResponse = await res.json()
+  let data: GeminiResponse
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error(`Gemini HTTP ${res.status}: resposta não é JSON válido`)
+  }
 
   if (data.error) {
-    if (data.error.code === 429) {
+    console.error('[Gemini] Erro da API:', JSON.stringify(data.error))
+    const { code, message } = data.error
+    if (code === 429) {
+      const isZeroQuota = message.includes('limit: 0')
+      if (isZeroQuota) {
+        throw new Error(
+          'Quota zero no projeto desta API key. Crie a key em aistudio.google.com/app/apikey (não no Google Cloud Console).',
+        )
+      }
       throw new Error('Rate limit do Gemini atingido. Aguarde alguns minutos.')
     }
-    if (data.error.code === 400 && data.error.message.includes('API_KEY')) {
+    const isKeyProblem =
+      message.toLowerCase().includes('api key') ||
+      message.toLowerCase().includes('api_key') ||
+      data.error.status === 'INVALID_ARGUMENT'
+    if (code === 400 && isKeyProblem) {
+      const isExpired = message.toLowerCase().includes('expired')
+      if (isExpired) {
+        throw new Error('API key expirada ou ainda propagando. Aguarde 1-2 minutos após criar a key e tente novamente.')
+      }
       throw new Error('API key inválida. Verifique nas configurações da extensão.')
     }
-    throw new Error(`Gemini API: ${data.error.message}`)
+    throw new Error(`Gemini API [${code}]: ${message}`)
+  }
+
+  if (!res.ok) {
+    throw new Error(`Gemini HTTP ${res.status}: ${res.statusText}`)
   }
 
   if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
