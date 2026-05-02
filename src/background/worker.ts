@@ -80,6 +80,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
 
     const { geminiModel } = await getState()
     const model = geminiModel || DEFAULT_MODEL
+    console.log(`[Worker] Modelo selecionado: ${model}`)
 
     const result = await analyzeWithGemini(
       keyResolution.key,

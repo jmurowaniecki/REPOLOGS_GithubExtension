@@ -76,7 +76,7 @@ export async function analyzeWithGemini(
   // Estimativa conservadora: 1 token ≈ 3 chars
   const estimatedTokens = Math.ceil(bodyStr.length / 3)
   console.log(
-    `[Gemini] Tokens estimados: ~${estimatedTokens.toLocaleString()} | ${owner}/${repo} | ${files.length} arquivo(s)`,
+    `[Gemini] Modelo: ${model} | Tokens estimados: ~${estimatedTokens.toLocaleString()} | ${owner}/${repo} | ${files.length} arquivo(s)`,
   )
 
   async function attempt(retriesLeft: number): Promise<AnalysisResult> {
@@ -101,7 +101,7 @@ export async function analyzeWithGemini(
         const isZeroQuota = message.includes('limit: 0')
         if (isZeroQuota) {
           throw new Error(
-            'Quota zero no projeto desta API key. Crie a key em aistudio.google.com/app/apikey (não no Google Cloud Console).',
+            'Modelo inválido para API key selecionada ou Quota zero no projeto. Crie a key em aistudio.google.com/app/apikey (não no Google Cloud Console).',
           )
         }
         if (retriesLeft > 0) {

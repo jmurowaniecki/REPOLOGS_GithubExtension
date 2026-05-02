@@ -11,7 +11,10 @@ async function init() {
       type: 'ANALYZE_REPO',
       owner,
       repo,
-    } satisfies MessageType)
+    } satisfies MessageType).catch((err: Error) => {
+      setButtonLoading(false)
+      showError(`Falha ao contatar extensão: ${err.message}`)
+    })
   })
 
   const repoMatch = location.pathname.match(/^\/([^/]+)\/([^/]+)/)
