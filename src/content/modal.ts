@@ -591,6 +591,7 @@ export function showLoading(step: string, percent: number): void {
 }
 
 export function showResult(result: AnalysisResult): void {
+  lockScroll()
   const shadow = render(resultHTML(result, isDark()))
   shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
   shadow.getElementById('rl-overlay')?.addEventListener('click', (e) => {
@@ -613,9 +614,18 @@ export function showError(message: string, requiresApiKey = false): void {
   }
 }
 
+function lockScroll(): void {
+  document.body.style.overflow = 'hidden'
+}
+
+function unlockScroll(): void {
+  document.body.style.overflow = ''
+}
+
 export function closeModal(): void {
   document.getElementById(HOST_ID)?.remove()
   document.removeEventListener('keydown', onEsc)
+  unlockScroll()
 }
 
 function onEsc(e: KeyboardEvent): void {
