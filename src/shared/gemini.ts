@@ -4,6 +4,9 @@ import type { AnalysisResult } from './types'
 const API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
+const RETRY_WAIT_MS = 62_000
+const MAX_RETRIES = 1
+
 interface GeminiResponse {
   candidates: Array<{
     content: {
@@ -39,6 +42,7 @@ export async function analyzeWithGemini(
   owner: string,
   repo: string,
   files: Array<{ path: string; content: string }>,
+  onRetry?: (waitSecs: number) => void,
 ): Promise<AnalysisResult> {
   const systemPrompt = buildSystemPrompt()
   const userPrompt = buildUserPrompt(owner, repo, files)
@@ -60,53 +64,73 @@ export async function analyzeWithGemini(
     },
   }
 
-  const res = await fetch(`${API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  const bodyStr = JSON.stringify(body)
+  // Estimativa conservadora: 1 token ≈ 3 chars
+  const estimatedTokens = Math.ceil(bodyStr.length / 3)
+  console.log(
+    `[Gemini] Tokens estimados: ~${estimatedTokens.toLocaleString()} | ${owner}/${repo} | ${files.length} arquivo(s)`,
+  )
 
-  let data: GeminiResponse
-  try {
-    data = await res.json()
-  } catch {
-    throw new Error(`Gemini HTTP ${res.status}: resposta não é JSON válido`)
-  }
+  async function attempt(retriesLeft: number): Promise<AnalysisResult> {
+    const res = await fetch(`${API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: bodyStr,
+    })
 
-  if (data.error) {
-    console.error('[Gemini] Erro da API:', JSON.stringify(data.error))
-    const { code, message } = data.error
-    if (code === 429) {
-      const isZeroQuota = message.includes('limit: 0')
-      if (isZeroQuota) {
-        throw new Error(
-          'Quota zero no projeto desta API key. Crie a key em aistudio.google.com/app/apikey (não no Google Cloud Console).',
-        )
-      }
-      throw new Error('Rate limit do Gemini atingido. Aguarde alguns minutos.')
+    let data: GeminiResponse
+    try {
+      data = await res.json()
+    } catch {
+      throw new Error(`Gemini HTTP ${res.status}: resposta não é JSON válido`)
     }
-    const isKeyProblem =
-      message.toLowerCase().includes('api key') ||
-      message.toLowerCase().includes('api_key') ||
-      data.error.status === 'INVALID_ARGUMENT'
-    if (code === 400 && isKeyProblem) {
-      const isExpired = message.toLowerCase().includes('expired')
-      if (isExpired) {
-        throw new Error('API key expirada ou ainda propagando. Aguarde 1-2 minutos após criar a key e tente novamente.')
+
+    if (data.error) {
+      console.error('[Gemini] Erro da API:', JSON.stringify(data.error))
+      const { code, message } = data.error
+
+      if (code === 429) {
+        const isZeroQuota = message.includes('limit: 0')
+        if (isZeroQuota) {
+          throw new Error(
+            'Quota zero no projeto desta API key. Crie a key em aistudio.google.com/app/apikey (não no Google Cloud Console).',
+          )
+        }
+        if (retriesLeft > 0) {
+          const waitSecs = Math.ceil(RETRY_WAIT_MS / 1000)
+          console.warn(`[Gemini] Rate limit 429 — aguardando ${waitSecs}s antes de tentar novamente`)
+          onRetry?.(waitSecs)
+          await new Promise<void>((resolve) => setTimeout(resolve, RETRY_WAIT_MS))
+          return attempt(retriesLeft - 1)
+        }
+        throw new Error('Rate limit do Gemini atingido. Aguarde alguns minutos e tente novamente.')
       }
-      throw new Error('API key inválida. Verifique nas configurações da extensão.')
+
+      const isKeyProblem =
+        message.toLowerCase().includes('api key') ||
+        message.toLowerCase().includes('api_key') ||
+        data.error.status === 'INVALID_ARGUMENT'
+      if (code === 400 && isKeyProblem) {
+        const isExpired = message.toLowerCase().includes('expired')
+        if (isExpired) {
+          throw new Error('API key expirada ou ainda propagando. Aguarde 1-2 minutos após criar a key e tente novamente.')
+        }
+        throw new Error('API key inválida. Verifique nas configurações da extensão.')
+      }
+      throw new Error(`Gemini API [${code}]: ${message}`)
     }
-    throw new Error(`Gemini API [${code}]: ${message}`)
+
+    if (!res.ok) {
+      throw new Error(`Gemini HTTP ${res.status}: ${res.statusText}`)
+    }
+
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      throw new Error('Resposta vazia do Gemini')
+    }
+
+    const rawText = data.candidates[0].content.parts[0].text
+    return parseGeminiResult(rawText)
   }
 
-  if (!res.ok) {
-    throw new Error(`Gemini HTTP ${res.status}: ${res.statusText}`)
-  }
-
-  if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-    throw new Error('Resposta vazia do Gemini')
-  }
-
-  const rawText = data.candidates[0].content.parts[0].text
-  return parseGeminiResult(rawText)
+  return attempt(MAX_RETRIES)
 }

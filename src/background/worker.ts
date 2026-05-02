@@ -83,6 +83,13 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
       owner,
       repo,
       contextFiles,
+      (waitSecs) => {
+        sendToTab(tabId, {
+          type: 'ANALYSIS_PROGRESS',
+          step: `Rate limit atingido — aguardando ${waitSecs}s e tentando novamente...`,
+          percent: 66,
+        })
+      },
     )
 
     const state = await getState()
