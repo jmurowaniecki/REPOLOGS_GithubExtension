@@ -5,6 +5,7 @@ import { GEMINI_MODELS, DEFAULT_MODEL } from '../shared/gemini'
 async function render() {
   const [status, storageState] = await Promise.all([getKeyStatus(), getState()])
   const selectedModel = storageState.geminiModel || DEFAULT_MODEL
+  const deepMode = storageState.deepMode
 
   const modelItems = GEMINI_MODELS.map(m => `
     <label class="model-item">
@@ -69,6 +70,19 @@ async function render() {
         </div>
       ` : ''}
 
+      <div class="toggle-section">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-label">Análise profunda</span>
+            <span class="toggle-desc">350 linhas por arquivo · Normal: 150 linhas</span>
+          </div>
+          <label class="toggle-switch" aria-label="Alternar análise profunda">
+            <input type="checkbox" id="deep-mode-toggle" ${deepMode ? 'checked' : ''} />
+            <span class="toggle-thumb"></span>
+          </label>
+        </div>
+      </div>
+
       <div id="msg"></div>
 
     </div>
@@ -112,6 +126,11 @@ async function render() {
         chrome.runtime.sendMessage({ type: 'SAVE_GEMINI_MODEL', model: radio.value })
       }
     })
+  })
+
+  document.getElementById('deep-mode-toggle')?.addEventListener('change', (e) => {
+    const checked = (e.target as HTMLInputElement).checked
+    chrome.runtime.sendMessage({ type: 'SAVE_DEEP_MODE', deepMode: checked })
   })
 }
 

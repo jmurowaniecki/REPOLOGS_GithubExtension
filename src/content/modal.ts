@@ -359,6 +359,32 @@ function buildCSS(): string {
     }
     .rl-tag--free { background: var(--green-bg); color: var(--green); border-color: var(--green); }
     .rl-tag--pro  { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+
+    /* ── Deep mode toggle ── */
+    .rl-toggle-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      width: 100%; margin-top: 14px; padding: 10px 12px;
+      background: var(--bg-sub); border: 1px solid var(--bdr); border-radius: 8px;
+      text-align: left;
+    }
+    .rl-toggle-info { display: flex; flex-direction: column; gap: 2px; }
+    .rl-toggle-lbl { font-size: 13px; font-weight: 500; color: var(--tx); }
+    .rl-toggle-desc { font-size: 11px; color: var(--tx-m); }
+    .rl-toggle-sw {
+      position: relative; width: 32px; height: 18px; flex-shrink: 0; cursor: pointer;
+    }
+    .rl-toggle-sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .rl-toggle-thumb {
+      position: absolute; inset: 0; background: var(--bdr); border-radius: 99px;
+      transition: background 0.2s ease;
+    }
+    .rl-toggle-thumb::before {
+      content: ''; position: absolute;
+      width: 12px; height: 12px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: transform 0.2s ease;
+    }
+    .rl-toggle-sw input:checked + .rl-toggle-thumb { background: var(--purple); }
+    .rl-toggle-sw input:checked + .rl-toggle-thumb::before { transform: translateX(14px); }
   `
 }
 
@@ -383,6 +409,21 @@ function keyFormFields(): string {
       <button class="rl-btn rl-btn--primary" id="rl-save-key">Salvar</button>
     </div>
     <p class="rl-keymsg" id="rl-key-msg"></p>
+  `
+}
+
+function deepModeToggleHTML(): string {
+  return `
+    <label class="rl-toggle-row" id="rl-deep-toggle-row">
+      <div class="rl-toggle-info">
+        <span class="rl-toggle-lbl">Análise profunda</span>
+        <span class="rl-toggle-desc">350 linhas por arquivo · Normal: 150 linhas</span>
+      </div>
+      <span class="rl-toggle-sw" aria-label="Alternar análise profunda">
+        <input type="checkbox" id="rl-deep-mode"/>
+        <span class="rl-toggle-thumb"></span>
+      </span>
+    </label>
   `
 }
 
@@ -451,6 +492,7 @@ function keyFormCardHTML(dark: boolean): string {
       </p>
       ${keyFormFields()}
       ${modelSelectorHTML()}
+      ${deepModeToggleHTML()}
       <button class="rl-keylnk" id="rl-cancel">Cancelar</button>
     </div>
   `, dark)
@@ -631,6 +673,16 @@ function wireKeyFormFields(shadow: ShadowRoot): void {
         chrome.runtime.sendMessage({ type: 'SAVE_GEMINI_MODEL', model: radio.value })
       }
     })
+  })
+
+  chrome.storage.local.get(['deepMode'], (data) => {
+    const toggle = shadow.getElementById('rl-deep-mode') as HTMLInputElement | null
+    if (toggle) toggle.checked = !!data['deepMode']
+  })
+
+  shadow.getElementById('rl-deep-mode')?.addEventListener('change', (e) => {
+    const checked = (e.target as HTMLInputElement).checked
+    chrome.runtime.sendMessage({ type: 'SAVE_DEEP_MODE', deepMode: checked })
   })
 }
 

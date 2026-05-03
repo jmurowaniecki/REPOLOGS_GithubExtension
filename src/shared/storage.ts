@@ -4,6 +4,7 @@ const DEFAULTS: StorageState = {
   systemKeyUsed: false,
   userApiKey: null,
   geminiModel: 'gemini-2.5-flash',
+  deepMode: false,
   analysisCount: 0,
   cache: {},
   lastResults: {},

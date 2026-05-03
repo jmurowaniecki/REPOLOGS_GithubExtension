@@ -1,35 +1,20 @@
 import type { FileEntry } from './types'
 
-// Arquivos com prioridade máxima — sempre incluídos se existirem
+// 10 categorias de arquivos universais — sempre incluídos se existirem (até MAX_PRIORITY_SLOTS)
 const PRIORITY_FILES = [
-  'README.md',
-  'readme.md',
-  'README.rst',
-  'package.json',
-  'requirements.txt',
-  'requirements-dev.txt',
-  'pyproject.toml',
-  'setup.py',
-  'go.mod',
-  'go.sum',
-  'Cargo.toml',
-  'Gemfile',
-  'pom.xml',
-  'build.gradle',
-  'Dockerfile',
-  'docker-compose.yml',
-  'docker-compose.yaml',
-  '.github/workflows',
-  'tsconfig.json',
-  'vite.config.ts',
-  'vite.config.js',
-  'webpack.config.js',
-  'next.config.js',
-  '.eslintrc.json',
-  '.eslintrc.js',
-  'jest.config.ts',
-  'jest.config.js',
+  'README.md', 'readme.md', 'README.rst',                    // 1. README
+  'package.json',                                             // 2. Node deps
+  'pyproject.toml', 'requirements.txt', 'requirements-dev.txt', // 3. Python deps
+  'go.mod',                                                   // 4. Go deps
+  'Cargo.toml',                                               // 5. Rust deps
+  'pom.xml', 'build.gradle',                                  // 6. Java deps
+  'tsconfig.json',                                            // 7. TS config
+  'Dockerfile',                                               // 8. Container
+  'docker-compose.yml', 'docker-compose.yaml',                // 9. Compose
+  '.github/workflows',                                        // 10. CI/CD
 ]
+
+const MAX_PRIORITY_SLOTS = 10
 
 // Extensões de código aceitas para análise
 const CODE_EXTENSIONS = new Set([
@@ -81,7 +66,7 @@ function getExtension(path: string): string {
   return path.slice(lastDot).toLowerCase()
 }
 
-function isPriority(path: string): boolean {
+export function isPriority(path: string): boolean {
   const filename = path.split('/').pop() ?? path
   return PRIORITY_FILES.some((p) =>
     filename === p || path === p || path.startsWith(p),
@@ -174,15 +159,69 @@ function topLines(content: string, maxLines: number): string {
   return lines.slice(0, maxLines).join('\n') + '\n... [truncado]'
 }
 
+const IMPORT_RE = /(?:from|require\()\s*['"](\.[^'"]+)['"]/g
+
+export function buildDepGraph(files: Array<{ path: string; content: string }>): Map<string, number> {
+  const stemToPath = new Map<string, string>()
+  for (const f of files) {
+    const stem = f.path.split('/').pop()!.replace(/\.[^.]+$/, '')
+    stemToPath.set(stem, f.path)
+  }
+
+  const inDegree = new Map<string, number>()
+  for (const f of files) inDegree.set(f.path, 0)
+
+  for (const f of files) {
+    const seen = new Set<string>()
+    IMPORT_RE.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = IMPORT_RE.exec(f.content)) !== null) {
+      const segments = match[1].split('/')
+      const stem = segments[segments.length - 1].replace(/\.[^.]+$/, '')
+      if (!stem || seen.has(stem)) continue
+      seen.add(stem)
+      const target = stemToPath.get(stem)
+      if (target && target !== f.path) {
+        inDegree.set(target, (inDegree.get(target) ?? 0) + 1)
+      }
+    }
+  }
+
+  return inDegree
+}
+
+export function selectByCentrality(
+  files: Array<{ path: string; content: string }>,
+  depGraph: Map<string, number>,
+  maxFiles = 40,
+): Array<{ path: string; content: string }> {
+  const priorityFiles = files.filter((f) => isPriority(f.path)).slice(0, MAX_PRIORITY_SLOTS)
+  const priorityPaths = new Set(priorityFiles.map((f) => f.path))
+
+  const rest = files
+    .filter((f) => !priorityPaths.has(f.path))
+    .sort((a, b) => {
+      const degB = depGraph.get(b.path) ?? 0
+      const degA = depGraph.get(a.path) ?? 0
+      if (degB !== degA) return degB - degA
+      const aInSrc = a.path.startsWith('src/') || a.path.startsWith('lib/') ? -1 : 0
+      const bInSrc = b.path.startsWith('src/') || b.path.startsWith('lib/') ? -1 : 0
+      return aInSrc - bInSrc
+    })
+
+  return [...priorityFiles, ...rest].slice(0, maxFiles)
+}
+
 export function buildContext(
   files: Array<{ path: string; content: string }>,
-  maxTotalTokens: number = 800_000,
+  options: { maxLines?: number; maxTotalTokens?: number } = {},
 ): Array<{ path: string; content: string }> {
+  const { maxLines = MAX_LINES_PER_FILE, maxTotalTokens = 800_000 } = options
   const result: Array<{ path: string; content: string }> = []
   let totalTokens = 0
 
   for (const file of files) {
-    const content = topLines(smartJsonContent(file.path, file.content), MAX_LINES_PER_FILE)
+    const content = topLines(smartJsonContent(file.path, file.content), maxLines)
     const tokens = estimateTokens(content)
     if (totalTokens + tokens > maxTotalTokens) {
       const available = maxTotalTokens - totalTokens

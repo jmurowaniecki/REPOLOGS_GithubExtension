@@ -1,6 +1,6 @@
 import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus } from '../shared/api-key-manager'
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
-import { sampleFiles, buildContext } from '../shared/sampler'
+import { sampleFiles, buildContext, buildDepGraph, selectByCentrality, isPriority, estimateTokens } from '../shared/sampler'
 import { analyzeWithGemini, DEFAULT_MODEL } from '../shared/gemini'
 import { setCachedAnalysis, setState, getState, setLastResult } from '../shared/storage'
 import type { MessageType} from '../shared/types'
@@ -54,7 +54,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
     sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapeando arquivos...', percent: 15 })
 
     const tree = await getFileTree(repoInfo)
-    const sampled = sampleFiles(tree)
+    const sampled = sampleFiles(tree, { maxFiles: 80 })
 
     sendToTab(tabId, {
       type: 'ANALYSIS_PROGRESS',
@@ -64,17 +64,49 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
 
     const rawFiles = await fetchFiles(sampled)
 
+    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapeando dependências...', percent: 45 })
+
+    const depGraph = buildDepGraph(rawFiles)
+    const selectedFiles = selectByCentrality(rawFiles, depGraph, 40)
+
+    const prioritySelected = selectedFiles.filter((f) => isPriority(f.path))
+    const graphSelected = selectedFiles.filter((f) => !isPriority(f.path))
+    console.log(`[Sampler] Padrão (${prioritySelected.length}):`, prioritySelected.map((f) => f.path))
+    console.log(
+      `[Sampler] Grafo (${graphSelected.length}):`,
+      graphSelected.map((f) => `${f.path} [in-degree: ${depGraph.get(f.path) ?? 0}]`),
+    )
+
     sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Montando contexto...', percent: 55 })
 
-    const contextFiles = buildContext(rawFiles)
+    const { geminiModel, deepMode } = await getState()
+    const model = geminiModel || DEFAULT_MODEL
 
-    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Analisando com IA...', percent: 65 })
+    const maxLines = deepMode ? 350 : 150
+    console.log(`[Worker] deepMode=${deepMode} | maxLines=${maxLines}`)
+    const contextFiles = buildContext(selectedFiles, { maxLines })
+    const totalContextTokens = contextFiles.reduce((sum, f) => sum + estimateTokens(f.content), 0)
+    console.log(
+      `[Worker] Contexto: ${contextFiles.length} arquivo(s) | ~${totalContextTokens.toLocaleString()} tokens estimados`,
+    )
+
+    if (deepMode) {
+      sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Análise profunda — processando contexto expandido...', percent: 65 })
+    } else {
+      sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Analisando com IA...', percent: 65 })
+    }
 
     console.log('[Worker] Usando key:', keyResolution.isSystemKey ? 'SYSTEM_KEY' : 'user key', '| key prefix:', keyResolution.key?.slice(0, 8))
-
-    const { geminiModel } = await getState()
-    const model = geminiModel || DEFAULT_MODEL
     console.log(`[Worker] Modelo selecionado: ${model}`)
+
+    if (deepMode && model === 'gemini-2.5-pro' && keyResolution.isSystemKey) {
+      sendToTab(tabId, {
+        type: 'ANALYSIS_ERROR',
+        error: 'Análise profunda com Gemini Pro requer sua própria API key.',
+        requiresApiKey: true,
+      })
+      return
+    }
 
     const result = await analyzeWithGemini(
       keyResolution.key,
@@ -103,7 +135,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
   }
 }
 
-chrome.runtime.onMessage.addListener((message: { type: string; key?: string; model?: string }, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: { type: string; key?: string; model?: string; deepMode?: boolean }, _, sendResponse) => {
   if (message.type === 'SAVE_API_KEY') {
     saveUserApiKey(message.key ?? '')
       .then(() => sendResponse({ ok: true }))
@@ -120,6 +152,13 @@ chrome.runtime.onMessage.addListener((message: { type: string; key?: string; mod
 
   if (message.type === 'SAVE_GEMINI_MODEL') {
     setState({ geminiModel: message.model ?? DEFAULT_MODEL })
+      .then(() => sendResponse({ ok: true }))
+      .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
+    return true
+  }
+
+  if (message.type === 'SAVE_DEEP_MODE') {
+    setState({ deepMode: !!message.deepMode })
       .then(() => sendResponse({ ok: true }))
       .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
     return true

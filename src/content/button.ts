@@ -178,11 +178,9 @@ function parseRepoFromUrl(): { owner: string; repo: string } | null {
   const match = location.pathname.match(/^\/([^/]+)\/([^/]+)/)
   if (!match) return null
 
-  // Garante que estamos na raiz do repo, não em subpáginas irrelevantes
   const pathParts = location.pathname.split('/').filter(Boolean)
   if (pathParts.length < 2) return null
 
-  // Exclui páginas que não são repos
   const skipSections = ['settings', 'marketplace', 'explore', 'notifications']
   if (skipSections.includes(pathParts[0])) return null
 
@@ -190,7 +188,6 @@ function parseRepoFromUrl(): { owner: string; repo: string } | null {
 }
 
 function findInjectionPoint(): Element | null {
-  // Tenta o header principal do repo
   return (
     document.querySelector('.OverviewContent-module__Box_6__Y_Yb_') ??
     document.querySelector('.OverviewContent-module__Box_2__Di8Pb') ??
@@ -224,8 +221,6 @@ export function injectButton(onClick: (owner: string, repo: string) => void): vo
   })
 
   wrapper.appendChild(btn)
-
-  // Insere antes do primeiro filho do target
   target.insertBefore(wrapper, target.firstChild)
 }
 
