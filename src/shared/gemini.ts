@@ -14,6 +14,10 @@ export const GEMINI_MODELS: Array<{ id: string; name: string; free: boolean }> =
 const RETRY_WAIT_MS = 62_000
 const MAX_RETRIES = 1
 
+export type AuthConfig =
+  | { mode: 'api-key'; apiKey: string }
+  | { mode: 'proxy'; url: string; token?: string }
+
 interface GeminiResponse {
   candidates: Array<{
     content: {
@@ -57,7 +61,7 @@ function parseGeminiResult(raw: string): AnalysisResult {
 }
 
 export async function analyzeWithGemini(
-  apiKey: string,
+  auth: AuthConfig,
   owner: string,
   repo: string,
   files: Array<{ path: string; content: string }>,
@@ -67,7 +71,7 @@ export async function analyzeWithGemini(
   const systemPrompt = buildSystemPrompt()
   const userPrompt = buildUserPrompt(owner, repo, files)
 
-  const body = {
+  const geminiBody = {
     system_instruction: {
       parts: [{ text: systemPrompt }],
     },
@@ -84,7 +88,7 @@ export async function analyzeWithGemini(
     },
   }
 
-  const bodyStr = JSON.stringify(body)
+  const bodyStr = JSON.stringify(geminiBody)
   // Estimativa conservadora: 1 token ≈ 3 chars
   const estimatedTokens = Math.ceil(bodyStr.length / 3)
   console.log(
@@ -92,11 +96,27 @@ export async function analyzeWithGemini(
   )
 
   async function attempt(retriesLeft: number): Promise<AnalysisResult> {
-    const res = await fetch(`${API_BASE}/${model}:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: bodyStr,
-    })
+    let res: Response
+
+    if (auth.mode === 'api-key') {
+      res = await fetch(`${API_BASE}/${model}:generateContent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': auth.apiKey,
+        },
+        body: bodyStr,
+      })
+    } else {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (auth.token) headers['X-Request-Token'] = auth.token
+
+      res = await fetch(`${auth.url}/api/analyze`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ model, body: geminiBody }),
+      })
+    }
 
     let data: GeminiResponse
     try {

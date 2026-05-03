@@ -1,5 +1,8 @@
 import { defineManifest } from '@crxjs/vite-plugin'
 
+const proxyUrl = import.meta.env.VITE_PROXY_URL as string | undefined
+const proxyOrigin = proxyUrl ? `${new URL(proxyUrl).origin}/*` : null
+
 export default defineManifest({
   manifest_version: 3,
   name: 'RepoLens',
@@ -36,5 +39,6 @@ export default defineManifest({
   host_permissions: [
     'https://api.github.com/*',
     'https://generativelanguage.googleapis.com/*',
+    ...(proxyOrigin ? [proxyOrigin] : []),
   ],
 })

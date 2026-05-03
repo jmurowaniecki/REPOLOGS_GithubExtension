@@ -2,6 +2,13 @@ import { getKeyStatus } from '../shared/api-key-manager'
 import { getState } from '../shared/storage'
 import { GEMINI_MODELS, DEFAULT_MODEL } from '../shared/gemini'
 
+function setMsg(el: HTMLElement, text: string, type: 'error' | 'success') {
+  const p = document.createElement('p')
+  p.className = type === 'error' ? 'error-msg' : 'success-msg'
+  p.textContent = text
+  el.replaceChildren(p)
+}
+
 async function render() {
   const [status, storageState] = await Promise.all([getKeyStatus(), getState()])
   const selectedModel = storageState.geminiModel || DEFAULT_MODEL
@@ -98,20 +105,20 @@ async function render() {
     const msg = document.getElementById('msg')!
 
     if (!key) {
-      msg.innerHTML = '<p class="error-msg">Insira uma API key válida</p>'
+      setMsg(msg, 'Insira uma API key válida', 'error')
       return
     }
 
     try {
       const response = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key })
       if (response?.ok) {
-        msg.innerHTML = '<p class="success-msg">API key salva com sucesso!</p>'
+        setMsg(msg, 'API key salva com sucesso!', 'success')
         setTimeout(render, 1500)
       } else {
-        msg.innerHTML = `<p class="error-msg">Erro: ${response?.error ?? 'desconhecido'}</p>`
+        setMsg(msg, `Erro: ${response?.error ?? 'desconhecido'}`, 'error')
       }
     } catch (e) {
-      msg.innerHTML = `<p class="error-msg">Erro: ${(e as Error).message}</p>`
+      setMsg(msg, `Erro: ${(e as Error).message}`, 'error')
     }
   })
 
