@@ -605,7 +605,7 @@ function wireKeyFormFields(shadow: ShadowRoot): void {
     if (msg) { msg.textContent = ''; msg.className = 'rl-keymsg' }
     const res: { ok: boolean; error?: string } = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key })
     if (res?.ok) {
-      if (msg) { msg.textContent = 'Salva! Clique em REPOLENS novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
+      if (msg) { msg.textContent = 'Salva! Clique em RepoLens novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
       setTimeout(closeModal, 1800)
     } else {
       if (msg) { msg.textContent = res?.error ?? 'Erro ao salvar.'; msg.className = 'rl-keymsg rl-keymsg--err' }

@@ -17,7 +17,7 @@ async function render() {
   const app = document.getElementById('app')!
   app.innerHTML = `
     <div class="header">
-      <span class="logo">🔍 RepoLens</span>
+      <span class="logo" style="display: flex; gap: 5px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="m13 13.5 2-2.5-2-2.5"/><path d="m21 21-4.3-4.3"/><path d="M9 8.5 7 11l2 2.5"/><circle cx="11" cy="11" r="8"/></svg> RepoLens</span>
       <span class="badge-free">Beta</span>
     </div>
 
