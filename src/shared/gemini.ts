@@ -24,6 +24,14 @@ interface GeminiResponse {
   error?: { message: string; code: number; status: string }
 }
 
+export function scoreToGrade(score: number): AnalysisResult['grade'] {
+  if (score >= 85) return 'A'
+  if (score >= 70) return 'B'
+  if (score >= 55) return 'C'
+  if (score >= 40) return 'D'
+  return 'F'
+}
+
 function parseGeminiResult(raw: string): AnalysisResult {
   const cleaned = raw
     .replace(/^```json\s*/i, '')
@@ -37,6 +45,10 @@ function parseGeminiResult(raw: string): AnalysisResult {
     if (typeof parsed.score !== 'number') {
       throw new Error('JSON sem campo score')
     }
+
+    const score = Math.max(0, Math.min(100, Math.round(parsed.score)))
+    parsed.score = score
+    parsed.grade = scoreToGrade(score)
 
     return parsed as AnalysisResult
   } catch (e) {
