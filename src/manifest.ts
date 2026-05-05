@@ -28,7 +28,7 @@ export default defineManifest({
   ],
   web_accessible_resources: [
     {
-      resources: ['icons/repologsicon.png.png'],
+      resources: ['icons/repologsicon.png'],
       matches: ['https://github.com/*'],
     },
   ],

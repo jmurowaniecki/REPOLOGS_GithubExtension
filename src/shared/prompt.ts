@@ -5,7 +5,24 @@ no markdown, no code blocks. Just the raw JSON.
 
 The JSON must follow exactly this structure:
 {
-  "score": <integer from 0 to 100>,
+  "reasoning": {
+    "tests":           "<1-2 sentences justifying the tests score>",
+    "security":        "<1-2 sentences justifying the security score>",
+    "architecture":    "<1-2 sentences justifying the architecture score>",
+    "codeQuality":     "<1-2 sentences justifying the codeQuality score>",
+    "documentation":   "<1-2 sentences justifying the documentation score>",
+    "consistency":     "<1-2 sentences justifying the consistency score>",
+    "maintainability": "<1-2 sentences justifying the maintainability score>"
+  },
+  "dimensionScores": {
+    "tests":           <integer 0-10>,
+    "security":        <integer 0-10>,
+    "architecture":    <integer 0-10>,
+    "codeQuality":     <integer 0-10>,
+    "documentation":   <integer 0-10>,
+    "consistency":     <integer 0-10>,
+    "maintainability": <integer 0-10>
+  },
   "summary": "<2-3 sentence summary of the project>",
   "strengths": ["<strength 1>", "<strength 2>"],
   "weaknesses": ["<weakness 1>", "<weakness 2>"],
@@ -15,62 +32,78 @@ The JSON must follow exactly this structure:
     "notes": "<observation about architecture>"
   },
   "recommendations": [
-    { "priority": "high", "text": "<urgent recommendation>" },
+    { "priority": "high",   "text": "<urgent recommendation>" },
     { "priority": "medium", "text": "<important recommendation>" },
-    { "priority": "low", "text": "<optional improvement>" }
+    { "priority": "low",    "text": "<optional improvement>" }
   ],
   "techStack": ["<technology 1>", "<technology 2>"],
   "securityFlags": ["<security flag if any>"]
 }
 
 ════════════════════════════════════════════
-SCORING METHODOLOGY (score)
+SCORING METHODOLOGY (dimensionScores)
 ════════════════════════════════════════════
 
-The score must reflect the NET quality of the project, balancing strengths and weaknesses
-by their actual weight — not just by count. Follow this reasoning:
+Each dimension is scored 0–10. Write the "reasoning" for each dimension BEFORE assigning
+its score — this forces you to commit to concrete evidence before picking the number.
 
-1. START FROM A BASELINE
-   - Trivial/empty/pure boilerplate project: base 30
-   - Small project with a clear purpose: base 55
-   - Medium functional project: base 65
-   - Mature and well-structured project: base 75
+DIMENSIONS AND SCORING ANCHORS:
 
-2. CLASSIFY EACH WEAKNESS BY SEVERITY and adjust the score:
-   - CRITICAL  (security: exposed secrets, RCE, SQLi; data loss; broken core functionality;
-                total lack of error handling in production):
-                deduct 15–20 points per occurrence — ONE critical flaw already prevents a high grade
-   - SERIOUS   (strong coupling between layers, total lack of tests in non-trivial project,
-                no relevant documentation, heavy technical debt, severely degraded performance):
-                deduct 8–12 points per occurrence
-   - MODERATE  (relevant code duplication, inconsistent types, partial error handling,
-                confusing folder structure): deduct 3–6 points per occurrence
-   - MINOR     (naming inconsistency, missing comments where useful,
-                small style deviations): deduct 1–2 points — many minor items
-                SHOULD NOT bring down a project with a solid base
+tests (weight 20%)
+  0–2  No tests at all, or tests are entirely broken/empty
+  3–4  Minimal tests, only smoke-level, incomplete coverage
+  5–6  Partial tests — some critical paths covered, many gaps
+  7–8  Good coverage of main flows, a few edge cases missing
+  9–10 Comprehensive, well-organized, reliable tests with clear assertions
 
-3. RECOGNIZE STRENGTHS and adjust positively:
-   - Robust and well-organized tests: +5 to +10
-   - Clear architecture with separation of concerns: +5 to +8
-   - Excellent documentation (README, types, strategic comments): +3 to +6
-   - Well-handled security (validations, no secrets, updated dependencies): +3 to +5
-   - Idiomatic, readable, and consistent code: +2 to +5
+security (weight 20%)
+  0–2  Exposed secrets, RCE/SQLi/XSS vulnerabilities, or no auth where required
+  3–4  Serious risks: hardcoded credentials, unvalidated user input, insecure deps
+  5–6  Moderate risks: some input validation missing, minor insecure practices
+  7–8  Generally safe: no obvious vulnerabilities, minor improvements possible
+  9–10 Strong security posture: validated input, no secrets, updated deps, defense-in-depth
 
-4. CALIBRATION RULES (mandatory):
-   - A CRITICAL weakness never allows score ≥ 75, regardless of strengths
-   - A SERIOUS weakness rarely allows score ≥ 85
-   - A project without critical or serious weaknesses, with several real strengths, should
-     score above 70
-   - Many minor items (5+ minor) with no serious ones should not result in score < 55
-   - Empty/boilerplate project with no original contribution: maximum 40
-   - Be fair: do not penalize for the absence of features the project never intended to have
+architecture (weight 15%)
+  0–2  No structure: all logic in one file/function, no separation of concerns
+  3–4  Minimal structure: some separation but heavy coupling between layers
+  5–6  Recognizable structure with clear issues: mixed responsibilities, some coupling
+  7–8  Clear layers and responsibilities, minor coupling issues
+  9–10 Excellent separation of concerns, cohesive modules, easy to extend
 
-5. SCORE → GRADE CORRESPONDENCE (for internal reference):
-   85–100 → Excellent: high-quality code, few minor issues
-   70–84  → Good: solid with clear but non-urgent improvements
-   55–69  → Fair: works, but with notable issues that deserve attention
-   40–54  → Poor: serious issues that compromise quality or maintainability
-   0–39   → Critical: serious flaws, insecure or severely incomplete
+codeQuality (weight 15%)
+  0–2  Unreadable: cryptic names, deeply nested logic, copy-paste everywhere
+  3–4  Low quality: poor naming, complex functions, significant duplication
+  5–6  Adequate: readable enough but with notable complexity or duplication
+  7–8  Good: clear names, manageable functions, little duplication
+  9–10 Excellent: idiomatic, self-documenting, DRY, low cyclomatic complexity
+
+documentation (weight 10%)
+  0–2  No README, no comments, no types/contracts anywhere
+  3–4  Minimal README, missing setup instructions, no inline docs
+  5–6  Basic README with setup, some comments, partial type coverage
+  7–8  Clear README, good type coverage, strategic comments where needed
+  9–10 Comprehensive docs: README, API docs, types, decision comments
+
+consistency (weight 10%)
+  0–2  No consistent style, patterns, or conventions across the codebase
+  3–4  Inconsistent: mixed styles, naming conventions conflict, different patterns per file
+  5–6  Mostly consistent with notable exceptions
+  7–8  Consistent style and patterns, minor deviations
+  9–10 Perfectly consistent: unified style, naming, and patterns throughout
+
+maintainability (weight 10%)
+  0–2  Unmaintainable: extreme tech debt, no way to change without breaking everything
+  3–4  Hard to maintain: high debt, complex dependencies, no clear entry points
+  5–6  Maintainable with effort: some debt, moderate complexity
+  7–8  Easy to maintain: low debt, clear structure, manageable complexity
+  9–10 Highly maintainable: minimal debt, clean design, straightforward to evolve
+
+CALIBRATION RULES (mandatory):
+  - A critical security flaw (hardcoded secrets, RCE, SQLi) → security ≤ 2
+  - Complete absence of tests in a non-trivial project → tests ≤ 3
+  - Do not penalize for features the project never intended to have
+  - Empty/pure boilerplate project → cap all dimensions at 4
+  - Be fair: a small personal project should not be judged as an enterprise system
 
 ════════════════════════════════════════════
 EVALUATION CRITERIA

@@ -17,9 +17,31 @@ export interface CollectedContext {
   totalTokensEstimate: number
 }
 
+export interface DimensionScores {
+  tests: number
+  security: number
+  architecture: number
+  codeQuality: number
+  documentation: number
+  consistency: number
+  maintainability: number
+}
+
+export interface DimensionReasoning {
+  tests: string
+  security: string
+  architecture: string
+  codeQuality: string
+  documentation: string
+  consistency: string
+  maintainability: string
+}
+
 export interface AnalysisResult {
-  score: number                    // 0–100
+  score: number                    // 0–100, computed from dimensionScores
   grade: 'A' | 'B' | 'C' | 'D' | 'F'
+  dimensionScores: DimensionScores
+  reasoning: DimensionReasoning
   summary: string
   strengths: string[]
   weaknesses: string[]

@@ -1,5 +1,5 @@
 import { buildSystemPrompt, buildUserPrompt } from './prompt'
-import type { AnalysisResult } from './types'
+import type { AnalysisResult, DimensionScores } from './types'
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
@@ -32,6 +32,24 @@ export function scoreToGrade(score: number): AnalysisResult['grade'] {
   return 'F'
 }
 
+const DIMENSION_WEIGHTS: Record<keyof DimensionScores, number> = {
+  tests:           0.20,
+  security:        0.20,
+  architecture:    0.15,
+  codeQuality:     0.15,
+  documentation:   0.10,
+  consistency:     0.10,
+  maintainability: 0.10,
+}
+
+export function computeScore(d: DimensionScores): number {
+  const raw = (Object.keys(DIMENSION_WEIGHTS) as (keyof DimensionScores)[]).reduce(
+    (acc, k) => acc + Math.max(0, Math.min(10, d[k])) * DIMENSION_WEIGHTS[k],
+    0,
+  )
+  return Math.round(raw * 10)
+}
+
 function parseGeminiResult(raw: string): AnalysisResult {
   const cleaned = raw
     .replace(/^```json\s*/i, '')
@@ -42,11 +60,11 @@ function parseGeminiResult(raw: string): AnalysisResult {
   try {
     const parsed = JSON.parse(cleaned)
 
-    if (typeof parsed.score !== 'number') {
-      throw new Error('JSON missing score field')
+    if (!parsed.dimensionScores || typeof parsed.dimensionScores !== 'object') {
+      throw new Error('JSON missing dimensionScores field')
     }
 
-    const score = Math.max(0, Math.min(100, Math.round(parsed.score)))
+    const score = computeScore(parsed.dimensionScores as DimensionScores)
     parsed.score = score
     parsed.grade = scoreToGrade(score)
 
@@ -78,7 +96,7 @@ export async function analyzeWithGemini(
       },
     ],
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0,
       maxOutputTokens: 8192,
       responseMimeType: 'application/json',
     },
