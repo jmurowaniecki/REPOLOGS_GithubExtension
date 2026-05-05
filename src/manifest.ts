@@ -3,7 +3,7 @@ import { defineManifest } from '@crxjs/vite-plugin'
 export default defineManifest({
   manifest_version: 3,
   name: 'RepoLogs',
-  version: '0.1.0',
+  version: '0.1.1',
   description: 'Analise a qualidade de repos GitHub com IA',
   icons: {
     '16': 'public/icons/icon-16.png',
