@@ -48,8 +48,8 @@ export async function resolveApiKey(): Promise<KeyResolution> {
 
   throw new ApiKeyError(
     hasProxy
-      ? 'Você já usou sua análise gratuita. Insira sua API key do Google Gemini para continuar.'
-      : 'Insira sua API key do Google Gemini para continuar.',
+      ? 'You have already used your free analysis. Enter your Google Gemini API key to continue.'
+      : 'Enter your Google Gemini API key to continue.',
     true,
   )
 }
