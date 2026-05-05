@@ -236,8 +236,8 @@ export function injectEyeButton(onClick: () => void): void {
 
   eye = document.createElement('button')
   eye.id = EYE_BUTTON_ID
-  eye.title = 'Ver última análise'
-  eye.setAttribute('aria-label', 'Ver última análise')
+  eye.title = 'View last analysis'
+  eye.setAttribute('aria-label', 'View last analysis')
   eye.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
   eye.onclick = onClick
   wrapper.appendChild(eye)
@@ -252,5 +252,5 @@ export function setButtonLoading(loading: boolean): void {
   if (!btn) return
   btn.disabled = loading
   const span = btn.querySelector('span')
-  if (span) span.textContent = loading ? 'Analisando...' : 'RepoLogs'
+  if (span) span.textContent = loading ? 'Analyzing...' : 'RepoLogs'
 }

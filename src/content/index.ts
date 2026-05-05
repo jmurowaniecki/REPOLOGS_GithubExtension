@@ -6,14 +6,14 @@ import type { MessageType } from '../shared/types'
 async function init() {
   injectButton((owner, repo) => {
     setButtonLoading(true)
-    showLoading('Iniciando análise...', 0)
+    showLoading('Starting analysis...', 0)
     chrome.runtime.sendMessage({
       type: 'ANALYZE_REPO',
       owner,
       repo,
     } satisfies MessageType).catch((err: Error) => {
       setButtonLoading(false)
-      showError(`Falha ao contatar extensão: ${err.message}`)
+      showError(`Failed to contact extension: ${err.message}`)
     })
   })
 

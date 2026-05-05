@@ -11,10 +11,10 @@ async function ghFetch<T>(url: string): Promise<T> {
   })
 
   if (res.status === 403) {
-    throw new Error('Rate limit da GitHub API atingido. Tente novamente em alguns minutos.')
+    throw new Error('GitHub API rate limit reached. Please try again in a few minutes.')
   }
   if (res.status === 404) {
-    throw new Error('Repositório não encontrado ou privado.')
+    throw new Error('Repository not found or private.')
   }
   if (!res.ok) {
     throw new Error(`GitHub API error: ${res.status}`)
@@ -30,10 +30,10 @@ export async function getRepoInfo(owner: string, repo: string): Promise<RepoInfo
   }>(`${BASE}/repos/${owner}/${repo}`)
 
   if (data.private) {
-    throw new Error('Repositórios privados não são suportados no MVP.')
+    throw new Error('Private repositories are not supported.')
   }
 
-  // Busca o SHA do último commit na branch default
+  // Fetch the SHA of the latest commit on the default branch
   const branchData = await ghFetch<{ commit: { sha: string } }>(
     `${BASE}/repos/${owner}/${repo}/branches/${data.default_branch}`,
   )
@@ -60,7 +60,7 @@ export async function getFileTree(info: RepoInfo): Promise<FileEntry[]> {
   )
 
   if (data.truncated) {
-    console.warn('[RepoLogs] Árvore truncada pelo GitHub — repo muito grande')
+    console.warn('[RepoLogs] Tree truncated by GitHub — repo too large')
   }
 
   return data.tree
@@ -83,7 +83,7 @@ export async function getFileContent(url: string): Promise<string> {
 }
 
 /**
- * Busca múltiplos arquivos em paralelo com limite de concorrência
+ * Fetches multiple files in parallel with a concurrency limit
  */
 export async function fetchFiles(
   entries: FileEntry[],

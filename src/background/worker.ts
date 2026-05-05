@@ -7,7 +7,7 @@ import type { MessageType} from '../shared/types'
 
 function sendToTab(tabId: number, message: MessageType) {
   chrome.tabs.sendMessage(tabId, message).catch(() => {
-    // Tab pode ter fechado; ignora silenciosamente
+    // Tab may have closed; ignore silently
   })
 }
 
@@ -46,38 +46,38 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
       throw e
     }
 
-    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Buscando informações do repo...', percent: 5 })
+    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Fetching repository information...', percent: 5 })
 
     const repoInfo = await getRepoInfo(owner, repo)
     const cacheKey = `${owner}/${repo}@${repoInfo.sha}`
 
-    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapeando arquivos...', percent: 15 })
+    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapping files...', percent: 15 })
 
     const tree = await getFileTree(repoInfo)
     const sampled = sampleFiles(tree, { maxFiles: 80 })
 
     sendToTab(tabId, {
       type: 'ANALYSIS_PROGRESS',
-      step: `Lendo ${sampled.length} arquivos...`,
+      step: `Reading ${sampled.length} files...`,
       percent: 30,
     })
 
     const rawFiles = await fetchFiles(sampled)
 
-    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapeando dependências...', percent: 45 })
+    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapping dependencies...', percent: 45 })
 
     const depGraph = buildDepGraph(rawFiles)
     const selectedFiles = selectByCentrality(rawFiles, depGraph, 40)
 
     const prioritySelected = selectedFiles.filter((f) => isPriority(f.path))
     const graphSelected = selectedFiles.filter((f) => !isPriority(f.path))
-    console.log(`[Sampler] Padrão (${prioritySelected.length}):`, prioritySelected.map((f) => f.path))
+    console.log(`[Sampler] Default (${prioritySelected.length}):`, prioritySelected.map((f) => f.path))
     console.log(
-      `[Sampler] Grafo (${graphSelected.length}):`,
+      `[Sampler] Graph (${graphSelected.length}):`,
       graphSelected.map((f) => `${f.path} [in-degree: ${depGraph.get(f.path) ?? 0}]`),
     )
 
-    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Montando contexto...', percent: 55 })
+    sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Building context...', percent: 55 })
 
     const { geminiModel, deepMode } = await getState()
     const model = geminiModel || DEFAULT_MODEL
@@ -87,22 +87,22 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
     const contextFiles = buildContext(selectedFiles, { maxLines })
     const totalContextTokens = contextFiles.reduce((sum, f) => sum + estimateTokens(f.content), 0)
     console.log(
-      `[Worker] Contexto: ${contextFiles.length} arquivo(s) | ~${totalContextTokens.toLocaleString()} tokens estimados`,
+      `[Worker] Context: ${contextFiles.length} file(s) | ~${totalContextTokens.toLocaleString()} estimated tokens`,
     )
 
     if (deepMode) {
-      sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Análise profunda — processando contexto expandido...', percent: 65 })
+      sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Deep analysis — processing expanded context...', percent: 65 })
     } else {
-      sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Analisando com IA...', percent: 65 })
+      sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Analyzing with AI...', percent: 65 })
     }
 
-    console.log('[Worker] Usando key:', keyResolution.isSystemKey ? 'SYSTEM_KEY' : 'user key', '| key prefix:', keyResolution.key?.slice(0, 8))
-    console.log(`[Worker] Modelo selecionado: ${model}`)
+    console.log('[Worker] Using key:', keyResolution.isSystemKey ? 'SYSTEM_KEY' : 'user key', '| key prefix:', keyResolution.key?.slice(0, 8))
+    console.log(`[Worker] Selected model: ${model}`)
 
     if (deepMode && model === 'gemini-2.5-pro' && keyResolution.isSystemKey) {
       sendToTab(tabId, {
         type: 'ANALYSIS_ERROR',
-        error: 'Análise profunda com Gemini Pro requer sua própria API key.',
+        error: 'Deep analysis with Gemini Pro requires your own API key.',
         requiresApiKey: true,
       })
       return
@@ -117,7 +117,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
       (waitSecs) => {
         sendToTab(tabId, {
           type: 'ANALYSIS_PROGRESS',
-          step: `Rate limit atingido — aguardando ${waitSecs}s e tentando novamente...`,
+          step: `Rate limit reached — waiting ${waitSecs}s and retrying...`,
           percent: 66,
         })
       },
@@ -133,7 +133,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
 
     sendToTab(tabId, { type: 'ANALYSIS_COMPLETE', result })
   } catch (e) {
-    const error = e instanceof Error ? e.message : 'Erro desconhecido'
+    const error = e instanceof Error ? e.message : 'Unknown error'
     sendToTab(tabId, { type: 'ANALYSIS_ERROR', error })
   }
 }

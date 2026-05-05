@@ -11,7 +11,7 @@ async function render() {
     <label class="model-item">
       <input type="radio" name="gemini-model" value="${m.id}" ${selectedModel === m.id ? 'checked' : ''}/>
       <span class="model-name">${m.name}</span>
-      <span class="tag ${m.free ? 'tag-free' : 'tag-pro'}">${m.free ? 'Grátis' : 'Pro'}</span>
+      <span class="tag ${m.free ? 'tag-free' : 'tag-pro'}">${m.free ? 'Free' : 'Pro'}</span>
     </label>
   `).join('')
 
@@ -26,25 +26,25 @@ async function render() {
 
       <div class="status-card">
         <div class="status-row">
-          <span class="status-label">Consulta gratuita</span>
+          <span class="status-label">Free query</span>
           <span class="status-value ${status.systemKeyUsed ? 'used' : 'ok'}">
-            ${status.systemKeyUsed ? 'Utilizada' : 'Disponível'}
+            ${status.systemKeyUsed ? 'Used' : 'Available'}
           </span>
         </div>
         <div class="status-row">
-          <span class="status-label">API key própria</span>
+          <span class="status-label">Your API key</span>
           <span class="status-value ${status.hasUserKey ? 'ok' : ''}">
-            ${status.hasUserKey ? 'Configurada' : 'Não configurada'}
+            ${status.hasUserKey ? 'Configured' : 'Not configured'}
           </span>
         </div>
         <div class="status-row">
-          <span class="status-label">Total de análises</span>
+          <span class="status-label">Total analyses</span>
           <span class="status-value">${status.analysisCount}</span>
         </div>
       </div>
 
       <div class="input-group">
-        <p class="section-label">Sua API key do Gemini</p>
+        <p class="section-label">Your Gemini API key</p>
         <input
           type="password"
           id="api-key-input"
@@ -53,19 +53,19 @@ async function render() {
           autocomplete="new-password"
         />
         <p class="input-hint">
-          Obtenha grátis em
+          Get for free at
           <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>
           → Get API key
         </p>
       </div>
 
-      <button class="btn-primary" id="save-btn">Salvar API key</button>
+      <button class="btn-primary" id="save-btn">Save API key</button>
 
-      ${status.hasUserKey ? `<button class="btn-danger" id="clear-btn">Remover API key</button>` : ''}
+      ${status.hasUserKey ? `<button class="btn-danger" id="clear-btn">Remove API key</button>` : ''}
 
       ${status.hasUserKey ? `
         <div class="model-section">
-          <p class="section-label">Modelo Gemini</p>
+          <p class="section-label">Gemini Model</p>
           <div class="model-list">${modelItems}</div>
         </div>
       ` : ''}
@@ -73,10 +73,10 @@ async function render() {
       <div class="toggle-section">
         <div class="toggle-row">
           <div class="toggle-info">
-            <span class="toggle-label">Análise profunda</span>
-            <span class="toggle-desc">350 linhas por arquivo · Normal: 150 linhas</span>
+            <span class="toggle-label">Deep analysis</span>
+            <span class="toggle-desc">350 lines per file · Normal: 150 lines</span>
           </div>
-          <label class="toggle-switch" aria-label="Alternar análise profunda">
+          <label class="toggle-switch" aria-label="Toggle deep analysis">
             <input type="checkbox" id="deep-mode-toggle" ${deepMode ? 'checked' : ''} />
             <span class="toggle-thumb"></span>
           </label>
@@ -88,7 +88,7 @@ async function render() {
     </div>
 
     <div class="footer">
-      Repos públicos · Gratuito
+      Public repos · Free
     </div>
   `
 
@@ -98,20 +98,20 @@ async function render() {
     const msg = document.getElementById('msg')!
 
     if (!key) {
-      msg.innerHTML = '<p class="error-msg">Insira uma API key válida</p>'
+      msg.innerHTML = '<p class="error-msg">Enter a valid API key</p>'
       return
     }
 
     try {
       const response = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key })
       if (response?.ok) {
-        msg.innerHTML = '<p class="success-msg">API key salva com sucesso!</p>'
+        msg.innerHTML = '<p class="success-msg">API key saved successfully!</p>'
         setTimeout(render, 1500)
       } else {
-        msg.innerHTML = `<p class="error-msg">Erro: ${response?.error ?? 'desconhecido'}</p>`
+        msg.innerHTML = `<p class="error-msg">Error: ${response?.error ?? 'unknown'}</p>`
       }
     } catch (e) {
-      msg.innerHTML = `<p class="error-msg">Erro: ${(e as Error).message}</p>`
+      msg.innerHTML = `<p class="error-msg">Error: ${(e as Error).message}</p>`
     }
   })
 

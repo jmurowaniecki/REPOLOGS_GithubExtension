@@ -33,21 +33,21 @@ function scoreColor(score: number): string {
 
 interface GradeInfo { color: string; bg: string; label: string }
 const GRADE_MAP: Record<string, GradeInfo> = {
-  A: { color: '#1a7f37', bg: '#dafbe1', label: 'Excelente' },
-  B: { color: '#0969da', bg: '#ddf4ff', label: 'Bom' },
-  C: { color: '#9a6700', bg: '#fff8c5', label: 'Regular' },
-  D: { color: '#bc4c00', bg: '#fff1e5', label: 'Ruim' },
-  F: { color: '#cf222e', bg: '#ffebe9', label: 'Crítico' },
+  A: { color: '#1a7f37', bg: '#dafbe1', label: 'Excellent' },
+  B: { color: '#0969da', bg: '#ddf4ff', label: 'Good' },
+  C: { color: '#9a6700', bg: '#fff8c5', label: 'Fair' },
+  D: { color: '#bc4c00', bg: '#fff1e5', label: 'Poor' },
+  F: { color: '#cf222e', bg: '#ffebe9', label: 'Critical' },
 }
 function gradeInfo(grade: string): GradeInfo {
   return GRADE_MAP[grade] ?? { color: '#636c76', bg: '#f6f8fa', label: '-' }
 }
 
 const ARCH_LABEL: Record<string, string> = {
-  excellent: 'Excelente', good: 'Boa', fair: 'Regular', poor: 'Fraca',
+  excellent: 'Excellent', good: 'Good', fair: 'Fair', poor: 'Poor',
 }
 const PRI_LABEL: Record<string, string> = {
-  high: 'Alta', medium: 'Média', low: 'Baixa',
+  high: 'High', medium: 'Medium', low: 'Low',
 }
 const PRI_CLASS: Record<string, string> = {
   high: 'rl-badge--red', medium: 'rl-badge--amber', low: 'rl-badge--green',
@@ -406,7 +406,7 @@ function keyFormFields(): string {
   return `
     <div class="rl-keyrow">
       <input class="rl-keyinput" id="rl-key-input" type="password" placeholder="AIza..." autocomplete="new-password"/>
-      <button class="rl-btn rl-btn--primary" id="rl-save-key">Salvar</button>
+      <button class="rl-btn rl-btn--primary" id="rl-save-key">Save</button>
     </div>
     <p class="rl-keymsg" id="rl-key-msg"></p>
   `
@@ -416,10 +416,10 @@ function deepModeToggleHTML(): string {
   return `
     <label class="rl-toggle-row" id="rl-deep-toggle-row">
       <div class="rl-toggle-info">
-        <span class="rl-toggle-lbl">Análise profunda</span>
-        <span class="rl-toggle-desc">350 linhas por arquivo · Normal: 150 linhas</span>
+        <span class="rl-toggle-lbl">Deep analysis</span>
+        <span class="rl-toggle-desc">350 lines per file · Normal: 150 lines</span>
       </div>
-      <span class="rl-toggle-sw" aria-label="Alternar análise profunda">
+      <span class="rl-toggle-sw" aria-label="Toggle deep analysis">
         <input type="checkbox" id="rl-deep-mode"/>
         <span class="rl-toggle-thumb"></span>
       </span>
@@ -432,12 +432,12 @@ function modelSelectorHTML(): string {
     <label class="rl-model-item">
       <input type="radio" name="rl-gemini-model" value="${m.id}"/>
       <span class="rl-model-name">${esc(m.name)}</span>
-      <span class="rl-tag ${m.free ? 'rl-tag--free' : 'rl-tag--pro'}">${m.free ? 'Grátis' : 'Pro'}</span>
+      <span class="rl-tag ${m.free ? 'rl-tag--free' : 'rl-tag--pro'}">${m.free ? 'Free' : 'Pro'}</span>
     </label>
   `).join('')
   return `
     <div class="rl-model-section" id="rl-model-section" style="display:none">
-      <p class="rl-model-lbl">Modelo Gemini</p>
+      <p class="rl-model-lbl">Gemini Model</p>
       <div class="rl-model-list">${items}</div>
     </div>
   `
@@ -446,7 +446,7 @@ function modelSelectorHTML(): string {
 function loadingHTML(step: string, percent: number, dark: boolean): string {
   return wrapOverlay(`
     <div class="rl-lc">
-      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Fechar">${closeXIcon()}</button>
+      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Close">${closeXIcon()}</button>
       <div class="rl-spin"></div>
       <p class="rl-step">${esc(step)}</p>
       <div class="rl-bar"><div class="rl-fill" style="width:${percent}%"></div></div>
@@ -459,19 +459,19 @@ function loadingHTML(step: string, percent: number, dark: boolean): string {
 function errorHTML(message: string, requiresKey: boolean, dark: boolean): string {
   const action = requiresKey
     ? `<p class="rl-ehint">
-        Obtenha sua key gratuita em
+        Get your free key at
         <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>
         → <strong>Get API key</strong>
       </p>
       ${keyFormFields()}`
-    : `<button class="rl-btn rl-btn--secondary" id="rl-close-btn">Fechar</button>
-       <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configurar API key</button>`
+    : `<button class="rl-btn rl-btn--secondary" id="rl-close-btn">Close</button>
+       <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configure API key</button>`
 
   return wrapOverlay(`
     <div class="rl-ec">
-      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Fechar">${closeXIcon()}</button>
+      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Close">${closeXIcon()}</button>
       <div class="rl-eico">${requiresKey ? '🔑' : '⚠️'}</div>
-      <h3 class="rl-ettl">${requiresKey ? 'API key necessária' : 'Erro na análise'}</h3>
+      <h3 class="rl-ettl">${requiresKey ? 'API key required' : 'Analysis error'}</h3>
       <p class="rl-emsg">${esc(message)}</p>
       ${action}
     </div>
@@ -481,19 +481,19 @@ function errorHTML(message: string, requiresKey: boolean, dark: boolean): string
 function keyFormCardHTML(dark: boolean): string {
   return wrapOverlay(`
     <div class="rl-ec">
-      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Fechar">${closeXIcon()}</button>
+      <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Close">${closeXIcon()}</button>
       <div class="rl-eico">🔑</div>
-      <h3 class="rl-ettl">Configurar API key</h3>
-      <p class="rl-emsg">Cole sua Gemini API key abaixo.</p>
+      <h3 class="rl-ettl">Configure API key</h3>
+      <p class="rl-emsg">Paste your Gemini API key below.</p>
       <p class="rl-ehint">
-        Obtenha gratuitamente em
+        Get for free at
         <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>
         → <strong>Get API key</strong>
       </p>
       ${keyFormFields()}
       ${modelSelectorHTML()}
       ${deepModeToggleHTML()}
-      <button class="rl-keylnk" id="rl-cancel">Cancelar</button>
+      <button class="rl-keylnk" id="rl-cancel">Cancel</button>
     </div>
   `, dark)
 }
@@ -509,7 +509,7 @@ function resultHTML(r: AnalysisResult, dark: boolean, modelName: string): string
   const weaknesses = r.weaknesses.map(w => li(w, 'rl-li--amber')).join('')
   const inconsistencies = r.inconsistencies.length
     ? r.inconsistencies.map(i => li(i, 'rl-li--red')).join('')
-    : li('Nenhuma inconsistência detectada', 'rl-li--muted')
+    : li('No inconsistencies detected', 'rl-li--muted')
 
   const chips = r.techStack.map(t => `<span class="rl-chip">${esc(t)}</span>`).join('')
 
@@ -522,7 +522,7 @@ function resultHTML(r: AnalysisResult, dark: boolean, modelName: string): string
 
   const security = r.securityFlags.length ? `
     <section class="rl-sec">
-      <h3 class="rl-ttl rl-ttl--red">⚑ Flags de segurança</h3>
+      <h3 class="rl-ttl rl-ttl--red">⚑ Security flags</h3>
       <ul class="rl-ul">${r.securityFlags.map(f => li(f, 'rl-li--red')).join('')}</ul>
     </section>
   ` : ''
@@ -536,10 +536,10 @@ function resultHTML(r: AnalysisResult, dark: boolean, modelName: string): string
           <span class="rl-pw">${esc(modelName)}</span>
         </div>
         <div class="rl-hactions">
-          <button class="rl-xbtn" id="rl-key-btn" aria-label="Configurar API key" title="Configurar API key">
+          <button class="rl-xbtn" id="rl-key-btn" aria-label="Configure API key" title="Configure API key">
             ${keyIcon()}
           </button>
-          <button class="rl-xbtn" id="rl-close" aria-label="Fechar">
+          <button class="rl-xbtn" id="rl-close" aria-label="Close">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
               <path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.749.749 0 011.275.326.749.749 0 01-.215.734L9.06 8l3.22 3.22a.749.749 0 01-.326 1.275.749.749 0 01-.734-.215L8 9.06l-3.22 3.22a.751.751 0 01-1.042-.018.751.751 0 01-.018-1.042L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/>
             </svg>
@@ -572,7 +572,7 @@ function resultHTML(r: AnalysisResult, dark: boolean, modelName: string): string
           <span class="rl-aico">🏗</span>
           <div>
             <div class="rl-ameta">
-              <span class="rl-albl">Arquitetura</span>
+              <span class="rl-albl">Architecture</span>
               <span class="rl-arat">${ARCH_LABEL[r.architecture.rating] ?? r.architecture.rating}</span>
             </div>
             <p class="rl-anotes">${esc(r.architecture.notes)}</p>
@@ -581,31 +581,31 @@ function resultHTML(r: AnalysisResult, dark: boolean, modelName: string): string
 
         <div class="rl-g2">
           <section class="rl-sec">
-            <h3 class="rl-ttl rl-ttl--green">✓ Pontos fortes</h3>
+            <h3 class="rl-ttl rl-ttl--green">✓ Strengths</h3>
             <ul class="rl-ul">${strengths}</ul>
           </section>
           <section class="rl-sec">
-            <h3 class="rl-ttl rl-ttl--amber">⚠ Pontos fracos</h3>
+            <h3 class="rl-ttl rl-ttl--amber">⚠ Weaknesses</h3>
             <ul class="rl-ul">${weaknesses}</ul>
           </section>
         </div>
 
         <section class="rl-sec">
-          <h3 class="rl-ttl rl-ttl--red">✕ Inconsistências</h3>
+          <h3 class="rl-ttl rl-ttl--red">✕ Inconsistencies</h3>
           <ul class="rl-ul">${inconsistencies}</ul>
         </section>
 
         ${security}
 
         <section class="rl-sec">
-          <h3 class="rl-ttl rl-ttl--blue">↑ Recomendações</h3>
+          <h3 class="rl-ttl rl-ttl--blue">↑ Recommendations</h3>
           <ul class="rl-recs">${recs}</ul>
         </section>
 
       </div>
 
       <footer class="rl-ft">
-        Análise gerada por IA · Use como referência, não como verdade absoluta
+        AI-generated analysis · Use as a reference, not as absolute truth
       </footer>
 
     </div>
@@ -640,17 +640,17 @@ function wireKeyFormFields(shadow: ShadowRoot): void {
   saveBtn?.addEventListener('click', async () => {
     const key = input?.value.trim() ?? ''
     if (!key) {
-      if (msg) { msg.textContent = 'Insira a API key antes de salvar.'; msg.className = 'rl-keymsg rl-keymsg--err' }
+      if (msg) { msg.textContent = 'Enter the API key before saving.'; msg.className = 'rl-keymsg rl-keymsg--err' }
       return
     }
     saveBtn.disabled = true
     if (msg) { msg.textContent = ''; msg.className = 'rl-keymsg' }
     const res: { ok: boolean; error?: string } = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key })
     if (res?.ok) {
-      if (msg) { msg.textContent = 'Salva! Clique em RepoLogs novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
+      if (msg) { msg.textContent = 'Saved! Click RepoLogs again.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
       setTimeout(closeModal, 1800)
     } else {
-      if (msg) { msg.textContent = res?.error ?? 'Erro ao salvar.'; msg.className = 'rl-keymsg rl-keymsg--err' }
+      if (msg) { msg.textContent = res?.error ?? 'Error saving.'; msg.className = 'rl-keymsg rl-keymsg--err' }
       saveBtn.disabled = false
     }
   })

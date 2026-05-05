@@ -18,11 +18,11 @@ export class ApiKeyError extends Error {
 }
 
 /**
- * Resolve qual API key usar para a próxima chamada.
- * Regra:
- *   1. Se usuário tem key própria → usa ela sempre
- *   2. Se systemKey ainda não foi usada → usa system + marca como usada
- *   3. Caso contrário → lança erro pedindo key do usuário
+ * Resolves which API key to use for the next call.
+ * Rules:
+ *   1. If the user has their own key → always use it
+ *   2. If systemKey has not been used yet → use system key + mark as used
+ *   3. Otherwise → throw error requesting the user's key
  */
 export async function resolveApiKey(): Promise<KeyResolution> {
   const state = await getState()
@@ -39,15 +39,15 @@ export async function resolveApiKey(): Promise<KeyResolution> {
 
   throw new ApiKeyError(
     hasSystemKey
-      ? 'Você já usou sua análise gratuita. Insira sua API key do Google Gemini para continuar.'
-      : 'Insira sua API key do Google Gemini para continuar.',
+      ? 'You have already used your free analysis. Enter your Google Gemini API key to continue.'
+      : 'Enter your Google Gemini API key to continue.',
     true,
   )
 }
 
 export async function saveUserApiKey(key: string): Promise<void> {
   if (!key || key.trim().length < 10) {
-    throw new Error('API key inválida')
+    throw new Error('Invalid API key')
   }
   await setState({ userApiKey: key.trim() })
 }

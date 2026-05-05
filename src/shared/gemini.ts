@@ -43,7 +43,7 @@ function parseGeminiResult(raw: string): AnalysisResult {
     const parsed = JSON.parse(cleaned)
 
     if (typeof parsed.score !== 'number') {
-      throw new Error('JSON sem campo score')
+      throw new Error('JSON missing score field')
     }
 
     const score = Math.max(0, Math.min(100, Math.round(parsed.score)))
@@ -52,7 +52,7 @@ function parseGeminiResult(raw: string): AnalysisResult {
 
     return parsed as AnalysisResult
   } catch (e) {
-    throw new Error(`Falha ao parsear resposta do Gemini: ${(e as Error).message}`)
+    throw new Error(`Failed to parse Gemini response: ${(e as Error).message}`)
   }
 }
 
@@ -85,10 +85,10 @@ export async function analyzeWithGemini(
   }
 
   const bodyStr = JSON.stringify(body)
-  // Estimativa conservadora: 1 token ≈ 3 chars
+  // Conservative estimate: 1 token ≈ 3 chars
   const estimatedTokens = Math.ceil(bodyStr.length / 3)
   console.log(
-    `[Gemini] Modelo: ${model} | Tokens estimados: ~${estimatedTokens.toLocaleString()} | ${owner}/${repo} | ${files.length} arquivo(s)`,
+    `[Gemini] Model: ${model} | Estimated tokens: ~${estimatedTokens.toLocaleString()} | ${owner}/${repo} | ${files.length} file(s)`,
   )
 
   async function attempt(retriesLeft: number): Promise<AnalysisResult> {
@@ -102,28 +102,28 @@ export async function analyzeWithGemini(
     try {
       data = await res.json()
     } catch {
-      throw new Error(`Gemini HTTP ${res.status}: resposta não é JSON válido`)
+      throw new Error(`Gemini HTTP ${res.status}: response is not valid JSON`)
     }
 
     if (data.error) {
-      console.error('[Gemini] Erro da API:', JSON.stringify(data.error))
+      console.error('[Gemini] API error:', JSON.stringify(data.error))
       const { code, message } = data.error
 
       if (code === 429) {
         const isZeroQuota = message.includes('limit: 0')
         if (isZeroQuota) {
           throw new Error(
-            'Modelo inválido para API key selecionada ou Quota zero no projeto. Crie a key em aistudio.google.com/app/apikey (não no Google Cloud Console).',
+            'Invalid model for selected API key or zero quota on project. Create your key at aistudio.google.com/app/apikey (not in Google Cloud Console).',
           )
         }
         if (retriesLeft > 0) {
           const waitSecs = Math.ceil(RETRY_WAIT_MS / 1000)
-          console.warn(`[Gemini] Rate limit 429 — aguardando ${waitSecs}s antes de tentar novamente`)
+          console.warn(`[Gemini] Rate limit 429 — waiting ${waitSecs}s before retrying`)
           onRetry?.(waitSecs)
           await new Promise<void>((resolve) => setTimeout(resolve, RETRY_WAIT_MS))
           return attempt(retriesLeft - 1)
         }
-        throw new Error('Rate limit do Gemini atingido. Aguarde alguns minutos e tente novamente.')
+        throw new Error('Gemini rate limit reached. Please wait a few minutes and try again.')
       }
 
       const isKeyProblem =
@@ -133,9 +133,9 @@ export async function analyzeWithGemini(
       if (code === 400 && isKeyProblem) {
         const isExpired = message.toLowerCase().includes('expired')
         if (isExpired) {
-          throw new Error('API key expirada ou ainda propagando. Aguarde 1-2 minutos após criar a key e tente novamente.')
+          throw new Error('API key expired or still propagating. Wait 1-2 minutes after creating the key and try again.')
         }
-        throw new Error('API key inválida. Verifique nas configurações da extensão.')
+        throw new Error('Invalid API key. Check in the extension settings.')
       }
       throw new Error(`Gemini API [${code}]: ${message}`)
     }
@@ -145,7 +145,7 @@ export async function analyzeWithGemini(
     }
 
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Resposta vazia do Gemini')
+      throw new Error('Empty response from Gemini')
     }
 
     const rawText = data.candidates[0].content.parts[0].text
