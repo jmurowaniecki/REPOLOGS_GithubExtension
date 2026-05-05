@@ -5,9 +5,9 @@ const proxyOrigin = proxyUrl ? `${new URL(proxyUrl).origin}/*` : null
 
 export default defineManifest({
   manifest_version: 3,
-  name: 'RepoLens',
-  version: '0.1.0',
-  description: 'Analise a qualidade de repos GitHub com IA',
+  name: 'RepoLogs',
+  version: '0.1.1',
+  description: 'AI code review, right inside GitHub. One click on any public repository and you get a full quality report (Google Gemini. Free try).',
   icons: {
     '16': 'public/icons/icon-16.png',
     '32': 'public/icons/icon-32.png',
@@ -31,7 +31,7 @@ export default defineManifest({
   ],
   web_accessible_resources: [
     {
-      resources: ['icons/repolensicon.png'],
+      resources: ['icons/repologsicon.png'],
       matches: ['https://github.com/*'],
     },
   ],

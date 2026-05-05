@@ -56,13 +56,17 @@ export async function resolveApiKey(): Promise<KeyResolution> {
 
 export async function saveUserApiKey(key: string): Promise<void> {
   if (!key || key.trim().length < 10) {
-    throw new Error('API key inválida')
+    throw new Error('Invalid API key')
   }
   await setState({ userApiKey: key.trim() })
 }
 
 export async function clearUserApiKey(): Promise<void> {
   await setState({ userApiKey: null })
+}
+
+export async function markSystemKeyUsed(): Promise<void> {
+  await setState({ systemKeyUsed: true })
 }
 
 export async function getKeyStatus() {
