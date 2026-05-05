@@ -60,7 +60,7 @@ export async function getFileTree(info: RepoInfo): Promise<FileEntry[]> {
   )
 
   if (data.truncated) {
-    console.warn('[RepoLens] Árvore truncada pelo GitHub — repo muito grande')
+    console.warn('[RepoLogs] Árvore truncada pelo GitHub — repo muito grande')
   }
 
   return data.tree

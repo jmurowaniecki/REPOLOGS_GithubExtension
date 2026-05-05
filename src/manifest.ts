@@ -2,7 +2,7 @@ import { defineManifest } from '@crxjs/vite-plugin'
 
 export default defineManifest({
   manifest_version: 3,
-  name: 'RepoLens',
+  name: 'RepoLogs',
   version: '0.1.0',
   description: 'Analise a qualidade de repos GitHub com IA',
   icons: {
@@ -28,7 +28,7 @@ export default defineManifest({
   ],
   web_accessible_resources: [
     {
-      resources: ['icons/repolensicon.png'],
+      resources: ['icons/repologsicon.png.png'],
       matches: ['https://github.com/*'],
     },
   ],

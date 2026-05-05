@@ -1,8 +1,8 @@
-const BUTTON_ID = 'repolens-analyze-btn'
-const EYE_BUTTON_ID = 'repolens-eye-btn'
-const WRAPPER_ID = 'repolens-wrapper'
-const ALREADY_INJECTED = 'repolens-injected'
-const STYLE_ID = 'repolens-btn-styles'
+const BUTTON_ID = 'repologs-analyze-btn'
+const EYE_BUTTON_ID = 'repologs-eye-btn'
+const WRAPPER_ID = 'repologs-wrapper'
+const ALREADY_INJECTED = 'repologs-injected'
+const STYLE_ID = 'repologs-btn-styles'
 
 function injectButtonStyles(): void {
   if (document.getElementById(STYLE_ID)) return
@@ -60,7 +60,7 @@ function injectButtonStyles(): void {
       width: calc(100% + 4px);
       height: calc(100% + 4px);
       z-index: -1;
-      animation: repolens-steam 30s linear infinite;
+      animation: repologs-steam 30s linear infinite;
     }
     #${BUTTON_ID}::after {
       filter: blur(8px);
@@ -86,7 +86,7 @@ function injectButtonStyles(): void {
       }
     }
 
-    @keyframes repolens-steam {
+    @keyframes repologs-steam {
       0%   { background-position: 0 0; }
       50%  { background-position: 400% 0; }
       100% { background-position: 0 0; }
@@ -213,8 +213,8 @@ export function injectButton(onClick: (owner: string, repo: string) => void): vo
 
   const btn = document.createElement('button')
   btn.id = BUTTON_ID
-  btn.setAttribute('data-repolens', ALREADY_INJECTED)
-  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="m13 13.5 2-2.5-2-2.5"/><path d="m21 21-4.3-4.3"/><path d="M9 8.5 7 11l2 2.5"/><circle cx="11" cy="11" r="8"/></svg><span>RepoLens</span>`
+  btn.setAttribute('data-repologs', ALREADY_INJECTED)
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="m13 13.5 2-2.5-2-2.5"/><path d="m21 21-4.3-4.3"/><path d="M9 8.5 7 11l2 2.5"/><circle cx="11" cy="11" r="8"/></svg><span>RepoLogs</span>`
 
   btn.addEventListener('click', () => {
     onClick(repoInfo.owner, repoInfo.repo)
@@ -252,5 +252,5 @@ export function setButtonLoading(loading: boolean): void {
   if (!btn) return
   btn.disabled = loading
   const span = btn.querySelector('span')
-  if (span) span.textContent = loading ? 'Analisando...' : 'RepoLens'
+  if (span) span.textContent = loading ? 'Analisando...' : 'RepoLogs'
 }

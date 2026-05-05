@@ -1,4 +1,4 @@
-import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus } from '../shared/api-key-manager'
+import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus, markSystemKeyUsed } from '../shared/api-key-manager'
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
 import { sampleFiles, buildContext, buildDepGraph, selectByCentrality, isPriority, estimateTokens } from '../shared/sampler'
 import { analyzeWithGemini, DEFAULT_MODEL } from '../shared/gemini'
@@ -125,6 +125,9 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
 
     const state = await getState()
     await setState({ analysisCount: state.analysisCount + 1 })
+    if (keyResolution.isSystemKey) {
+      await markSystemKeyUsed()
+    }
     await setCachedAnalysis(cacheKey, result)
     await setLastResult(`${owner}/${repo}`, result)
 

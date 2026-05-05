@@ -1,7 +1,7 @@
 import type { AnalysisResult } from '../shared/types'
 import { GEMINI_MODELS, DEFAULT_MODEL } from '../shared/gemini'
 
-const HOST_ID = 'repolens-modal-host'
+const HOST_ID = 'repologs-modal-host'
 const CIRC = +(2 * Math.PI * 40).toFixed(2) // r=40 → 251.33
 
 // ── Utilities ──────────────────────────────────────────────────────
@@ -532,7 +532,7 @@ function resultHTML(r: AnalysisResult, dark: boolean, modelName: string): string
 
       <header class="rl-hd">
         <div class="rl-brand">
-          <span class="rl-bname">RepoLens</span>
+          <span class="rl-bname">RepoLogs</span>
           <span class="rl-pw">${esc(modelName)}</span>
         </div>
         <div class="rl-hactions">
@@ -647,7 +647,7 @@ function wireKeyFormFields(shadow: ShadowRoot): void {
     if (msg) { msg.textContent = ''; msg.className = 'rl-keymsg' }
     const res: { ok: boolean; error?: string } = await chrome.runtime.sendMessage({ type: 'SAVE_API_KEY', key })
     if (res?.ok) {
-      if (msg) { msg.textContent = 'Salva! Clique em RepoLens novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
+      if (msg) { msg.textContent = 'Salva! Clique em RepoLogs novamente.'; msg.className = 'rl-keymsg rl-keymsg--ok' }
       setTimeout(closeModal, 1800)
     } else {
       if (msg) { msg.textContent = res?.error ?? 'Erro ao salvar.'; msg.className = 'rl-keymsg rl-keymsg--err' }

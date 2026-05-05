@@ -34,7 +34,6 @@ export async function resolveApiKey(): Promise<KeyResolution> {
   const hasSystemKey = typeof SYSTEM_KEY === 'string' && SYSTEM_KEY.length > 0
 
   if (hasSystemKey && !state.systemKeyUsed) {
-    await setState({ systemKeyUsed: true })
     return { key: SYSTEM_KEY, isSystemKey: true }
   }
 
@@ -55,6 +54,10 @@ export async function saveUserApiKey(key: string): Promise<void> {
 
 export async function clearUserApiKey(): Promise<void> {
   await setState({ userApiKey: null })
+}
+
+export async function markSystemKeyUsed(): Promise<void> {
+  await setState({ systemKeyUsed: true })
 }
 
 export async function getKeyStatus() {
