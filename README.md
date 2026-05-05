@@ -24,7 +24,7 @@ RepoLogs is a Chrome extension that injects an analysis button into any public G
 
 ## Screenshots
 
-![Screenshot 1](public/README_files/7.png)
+
 ![Screenshot 2](public/README_files/2.png)
 ![Screenshot 3](public/README_files/3.png)
 ![Screenshot 4](public/README_files/4.png)
