@@ -96,7 +96,8 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
       sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Analyzing with AI...', percent: 65 })
     }
 
-    console.log('[Worker] Using key:', keyResolution.isSystemKey ? 'SYSTEM_KEY' : 'user key', '| key prefix:', keyResolution.key?.slice(0, 8))
+    const keyPrefix = keyResolution.auth.mode === 'api-key' ? keyResolution.auth.apiKey.slice(0, 8) : '(proxy)'
+    console.log('[Worker] Using key:', keyResolution.isSystemKey ? 'SYSTEM_KEY' : 'user key', '| key prefix:', keyPrefix)
     console.log(`[Worker] Selected model: ${model}`)
 
     if (deepMode && model === 'gemini-2.5-pro' && keyResolution.isSystemKey) {
