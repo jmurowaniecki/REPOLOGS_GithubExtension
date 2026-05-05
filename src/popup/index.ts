@@ -2,13 +2,6 @@ import { getKeyStatus } from '../shared/api-key-manager'
 import { getState } from '../shared/storage'
 import { GEMINI_MODELS, DEFAULT_MODEL } from '../shared/gemini'
 
-function setMsg(el: HTMLElement, text: string, type: 'error' | 'success') {
-  const p = document.createElement('p')
-  p.className = type === 'error' ? 'error-msg' : 'success-msg'
-  p.textContent = text
-  el.replaceChildren(p)
-}
-
 async function render() {
   const [status, storageState] = await Promise.all([getKeyStatus(), getState()])
   const selectedModel = storageState.geminiModel || DEFAULT_MODEL
