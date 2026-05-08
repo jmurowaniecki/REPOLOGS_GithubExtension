@@ -1,24 +1,40 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { kv } from '@vercel/kv'
 
 const GEMINI_KEY = process.env.GEMINI_SYSTEM_KEY
 const PROXY_TOKEN = process.env.PROXY_TOKEN
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const ALLOWED_MODELS = new Set(['gemini-2.5-flash', 'gemini-2.5-flash-lite'])
+const FREE_USES_PER_IP = parseInt(process.env.FREE_USES_PER_IP ?? '1', 10)
+
+function getIp(req: VercelRequest): string {
+  const forwarded = req.headers['x-forwarded-for']
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded
+  return (raw?.split(',')[0] ?? req.socket?.remoteAddress ?? 'unknown').trim()
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Request-Token')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Proxy-Token')
 
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!PROXY_TOKEN || req.headers['x-request-token'] !== PROXY_TOKEN) {
+  if (PROXY_TOKEN && req.headers['x-proxy-token'] !== PROXY_TOKEN) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
   if (!GEMINI_KEY) {
     return res.status(503).json({ error: 'Service temporarily unavailable' })
+  }
+
+  const ip = getIp(req)
+  const key = `uses:${ip}`
+  const uses = (await kv.get<number>(key)) ?? 0
+
+  if (uses >= FREE_USES_PER_IP) {
+    return res.status(429).json({ error: 'Free quota exceeded' })
   }
 
   const { model, body } = (req.body ?? {}) as { model?: unknown; body?: unknown }
@@ -40,6 +56,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify(body),
     })
+
+    if (upstream.ok) {
+      // só incrementa se a chamada ao Gemini teve sucesso
+      await kv.set(key, uses + 1)
+    }
 
     const data: unknown = await upstream.json()
     return res.status(upstream.status).json(data)

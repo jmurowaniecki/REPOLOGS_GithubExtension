@@ -127,7 +127,7 @@ export async function analyzeWithGemini(
       })
     } else {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (auth.token) headers['X-Request-Token'] = auth.token
+      if (auth.token) headers['X-Proxy-Token'] = auth.token
 
       res = await fetch(`${auth.url}/api/analyze`, {
         method: 'POST',

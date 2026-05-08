@@ -35,7 +35,7 @@ export default defineManifest({
       matches: ['https://github.com/*'],
     },
   ],
-  permissions: ['storage', 'activeTab'],
+  permissions: ['storage'],
   host_permissions: [
     'https://api.github.com/*',
     'https://generativelanguage.googleapis.com/*',
