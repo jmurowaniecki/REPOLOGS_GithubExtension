@@ -31,9 +31,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ip = getIp(req)
   const key = `uses:${ip}`
-  const uses = (await kv.get<number>(key)) ?? 0
+  let uses = 0
+  let kvAvailable = true
+  try {
+    uses = (await kv.get<number>(key)) ?? 0
+  } catch {
+    kvAvailable = false
+  }
 
-  if (uses >= FREE_USES_PER_IP) {
+  if (kvAvailable && uses >= FREE_USES_PER_IP) {
     return res.status(429).json({ error: 'Free quota exceeded' })
   }
 
@@ -57,9 +63,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify(body),
     })
 
-    if (upstream.ok) {
-      // só incrementa se a chamada ao Gemini teve sucesso
-      await kv.set(key, uses + 1)
+    if (upstream.ok && kvAvailable) {
+      try {
+        await kv.set(key, uses + 1)
+      } catch {
+        // best-effort
+      }
     }
 
     const data: unknown = await upstream.json()

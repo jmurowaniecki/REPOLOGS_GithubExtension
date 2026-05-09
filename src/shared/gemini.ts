@@ -25,7 +25,7 @@ interface GeminiResponse {
     }
     finishReason: string
   }>
-  error?: { message: string; code: number; status: string }
+  error?: string | { message: string; code: number; status: string }
 }
 
 export function scoreToGrade(score: number): AnalysisResult['grade'] {
@@ -145,6 +145,15 @@ export async function analyzeWithGemini(
 
     if (data.error) {
       console.error('[Gemini] API error:', JSON.stringify(data.error))
+
+      // Proxy errors come as { error: "string" }; Gemini errors as { error: { message, code, status } }
+      if (typeof data.error === 'string') {
+        if (res.status === 429) {
+          throw new Error('You have already used your free analysis. Enter your Google Gemini API key to continue.')
+        }
+        throw new Error(data.error)
+      }
+
       const { code, message } = data.error
 
       if (code === 429) {
