@@ -1,5 +1,7 @@
 # RepoLogs
 
+## Google Extension's in analysis for now, tool is broken 
+
 **AI-powered code quality analysis for GitHub repositories — right in your browser.**
 
 RepoLogs is a Chrome extension that injects an analysis button into any public GitHub repository page. One click triggers an intelligent file sampling pipeline, sends the code to Google Gemini, and renders a detailed quality report — score, grade, architecture rating, security flags, strengths, weaknesses, and actionable recommendations — without leaving GitHub.
