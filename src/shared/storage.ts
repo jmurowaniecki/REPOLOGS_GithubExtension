@@ -9,6 +9,7 @@ const DEFAULTS: StorageState = {
   analysisCount: 0,
   cache: {},
   lastResults: {},
+  blobCache: {},
 }
 
 export async function getState(): Promise<StorageState> {
@@ -44,4 +45,22 @@ export async function getLastResult(repoKey: string): Promise<AnalysisResult | n
 export async function setLastResult(repoKey: string, result: AnalysisResult): Promise<void> {
   const state = await getState()
   await setState({ lastResults: { ...state.lastResults, [repoKey]: result } })
+}
+
+const BLOB_CACHE_MAX = 200
+
+export async function getCachedBlob(url: string): Promise<string | null> {
+  const state = await getState()
+  return state.blobCache[url] ?? null
+}
+
+export async function setCachedBlob(url: string, content: string): Promise<void> {
+  const state = await getState()
+  const blobCache = { ...state.blobCache, [url]: content }
+  const keys = Object.keys(blobCache)
+  if (keys.length > BLOB_CACHE_MAX) {
+    // Evict oldest entries (FIFO)
+    keys.slice(0, keys.length - BLOB_CACHE_MAX).forEach((k) => delete blobCache[k])
+  }
+  await setState({ blobCache })
 }

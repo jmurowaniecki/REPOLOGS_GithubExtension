@@ -1,6 +1,16 @@
 import type { RepoInfo, FileEntry } from './types'
+import { getCachedBlob, setCachedBlob } from './storage'
 
 const BASE = 'https://api.github.com'
+const RAW_BASE = 'https://raw.githubusercontent.com'
+
+// Track the last known rate-limit state from GitHub API response headers
+let rateLimitRemaining = 60
+let rateLimitReset = 0 // Unix timestamp (seconds)
+
+export function getRateLimitStatus() {
+  return { remaining: rateLimitRemaining, reset: rateLimitReset }
+}
 
 async function ghFetch<T>(url: string): Promise<T> {
   const res = await fetch(url, {
@@ -10,8 +20,21 @@ async function ghFetch<T>(url: string): Promise<T> {
     },
   })
 
-  if (res.status === 403) {
-    throw new Error('GitHub API rate limit reached. Please try again in a few minutes.')
+  // Keep rate-limit counters updated from every response
+  const remaining = res.headers.get('X-RateLimit-Remaining')
+  const reset = res.headers.get('X-RateLimit-Reset')
+  if (remaining !== null) rateLimitRemaining = parseInt(remaining, 10)
+  if (reset !== null) rateLimitReset = parseInt(reset, 10)
+
+  if (res.status === 403 || res.status === 429) {
+    let msg = 'GitHub API rate limit reached.'
+    if (rateLimitReset) {
+      const resetDate = new Date(rateLimitReset * 1000)
+      msg += ` Resets at ${resetDate.toLocaleTimeString()}.`
+    } else {
+      msg += ' Please try again in a few minutes.'
+    }
+    throw new Error(msg)
   }
   if (res.status === 404) {
     throw new Error('Repository not found or private.')
@@ -72,21 +95,54 @@ export async function getFileTree(info: RepoInfo): Promise<FileEntry[]> {
     }))
 }
 
-export async function getFileContent(url: string): Promise<string> {
-  const data = await ghFetch<{ content: string; encoding: string }>(url)
+/**
+ * Fetches a single file's content using the raw.githubusercontent.com CDN.
+ * Raw content requests are served from GitHub's CDN and are not subject to
+ * the GitHub REST API rate limit (60 req/hour for unauthenticated clients).
+ *
+ * Falls back to the blob API URL only if the raw fetch fails.
+ */
+export async function getFileContent(
+  entry: FileEntry,
+  repoInfo: RepoInfo,
+): Promise<string> {
+  // Use the commit SHA (not branch name) so the URL is immutable and the cache
+  // never returns stale content after a push to the default branch.
+  const rawUrl = `${RAW_BASE}/${repoInfo.owner}/${repoInfo.repo}/${repoInfo.sha}/${entry.path}`
 
-  if (data.encoding === 'base64') {
-    return atob(data.content.replace(/\n/g, ''))
+  // Check local cache first (keyed by raw URL which encodes owner/repo/branch/path)
+  const cached = await getCachedBlob(rawUrl)
+  if (cached !== null) {
+    console.log(`[GitHub] cache hit: ${entry.path}`)
+    return cached
   }
 
-  return data.content
+  // Fetch from CDN — no rate limit for public repos
+  const res = await fetch(rawUrl)
+
+  if (res.ok) {
+    const content = await res.text()
+    await setCachedBlob(rawUrl, content)
+    return content
+  }
+
+  // Fallback: use the blob API URL (counts against rate limit)
+  console.warn(`[GitHub] raw fetch failed (${res.status}) for ${entry.path}, falling back to blob API`)
+  const data = await ghFetch<{ content: string; encoding: string }>(entry.url)
+  const content = data.encoding === 'base64'
+    ? atob(data.content.replace(/\n/g, ''))
+    : data.content
+  await setCachedBlob(rawUrl, content)
+  return content
 }
 
 /**
- * Fetches multiple files in parallel with a concurrency limit
+ * Fetches multiple files in parallel with a concurrency limit.
+ * Uses raw.githubusercontent.com CDN to avoid API rate limits.
  */
 export async function fetchFiles(
   entries: FileEntry[],
+  repoInfo: RepoInfo,
   concurrency = 8,
 ): Promise<Array<{ path: string; content: string }>> {
   const results: Array<{ path: string; content: string }> = []
@@ -96,7 +152,7 @@ export async function fetchFiles(
     const batchResults = await Promise.allSettled(
       batch.map(async (entry) => ({
         path: entry.path,
-        content: await getFileContent(entry.url),
+        content: await getFileContent(entry, repoInfo),
       })),
     )
 

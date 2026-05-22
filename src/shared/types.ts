@@ -75,4 +75,5 @@ export interface StorageState {
   analysisCount: number
   cache: Record<string, AnalysisResult>      // key: "owner/repo@sha"
   lastResults: Record<string, AnalysisResult> // key: "owner/repo"
+  blobCache: Record<string, string>          // key: raw CDN URL, value: file content
 }

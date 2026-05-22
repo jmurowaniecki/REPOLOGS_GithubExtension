@@ -62,7 +62,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
       percent: 30,
     })
 
-    const rawFiles = await fetchFiles(sampled)
+    const rawFiles = await fetchFiles(sampled, repoInfo)
 
     sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapping dependencies...', percent: 45 })
 
