@@ -17,7 +17,7 @@ RepoLogs is a Chrome extension that injects an analysis button into any public G
 - **Deep mode** — increases per-file line budget from 150 → 350 lines for larger codebases
 - **Multiple Gemini models** — Gemini 2.5 Flash (default), 2.5 Flash Lite, or 2.5 Pro
 - **Free tier** — one free analysis using the system key; unlimited with your own Gemini API key
-- **Result caching** — analyses are cached by commit SHA for instant re-viewing
+- **Result caching** — analyses are cached by commit SHA for instant re-viewing; individual file contents are also cached locally so repeat analyses skip redundant network requests
 - **Dark / light theme** — follows the OS preference
 
 ---
@@ -42,7 +42,7 @@ Content Script → Background Worker
         ├─ 1. Fetch repo metadata (default branch, latest SHA)
         ├─ 2. Fetch full file tree via GitHub API
         ├─ 3. Sample up to 80 files (priority + code files)
-        ├─ 4. Read file contents — 8 concurrent requests, max 150/350 lines each
+        ├─ 4. Read file contents — 8 concurrent requests via raw CDN (no API rate limit), max 150/350 lines each
         ├─ 5. Build dependency graph → rank files by import centrality
         ├─ 6. Select top 40 files within token budget
         ├─ 7. Call Gemini API with structured prompt
@@ -200,7 +200,8 @@ interface AnalysisResult {
 |---|---|
 | `storage` | Persist settings and cached analyses |
 | `activeTab` | Read current tab URL to extract owner/repo |
-| `https://api.github.com/*` | Fetch repository metadata and file contents |
+| `https://api.github.com/*` | Fetch repository metadata and file tree |
+| `https://raw.githubusercontent.com/*` | Fetch file contents via CDN (not subject to API rate limits) |
 | `https://generativelanguage.googleapis.com/*` | Call the Gemini API |
 
 ---

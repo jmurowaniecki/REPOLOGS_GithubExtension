@@ -38,6 +38,7 @@ export default defineManifest({
   permissions: ['storage'],
   host_permissions: [
     'https://api.github.com/*',
+    'https://raw.githubusercontent.com/*',
     'https://generativelanguage.googleapis.com/*',
     ...(proxyOrigin ? [proxyOrigin] : []),
   ],
