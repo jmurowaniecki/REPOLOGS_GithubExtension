@@ -68,6 +68,7 @@ export type MessageType =
 
 export interface StorageState {
   systemKeyUsed: boolean
+  freeTierDisabled: boolean
   userApiKey: string | null
   geminiModel: string
   deepMode: boolean

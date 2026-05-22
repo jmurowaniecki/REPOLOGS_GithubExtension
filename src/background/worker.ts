@@ -1,4 +1,4 @@
-import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus, markSystemKeyUsed } from '../shared/api-key-manager'
+import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus, markSystemKeyUsed, disableFreeTier, enableFreeTier } from '../shared/api-key-manager'
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
 import { sampleFiles, buildContext, buildDepGraph, selectByCentrality, isPriority, estimateTokens } from '../shared/sampler'
 import { analyzeWithGemini, DEFAULT_MODEL } from '../shared/gemini'
@@ -163,6 +163,20 @@ chrome.runtime.onMessage.addListener((message: { type: string; key?: string; mod
 
   if (message.type === 'SAVE_DEEP_MODE') {
     setState({ deepMode: !!message.deepMode })
+      .then(() => sendResponse({ ok: true }))
+      .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
+    return true
+  }
+
+  if (message.type === 'DISABLE_FREE_TIER') {
+    disableFreeTier()
+      .then(() => sendResponse({ ok: true }))
+      .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
+    return true
+  }
+
+  if (message.type === 'ENABLE_FREE_TIER') {
+    enableFreeTier()
       .then(() => sendResponse({ ok: true }))
       .catch((e: Error) => sendResponse({ ok: false, error: e.message }))
     return true

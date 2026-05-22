@@ -25,7 +25,7 @@ export class ApiKeyError extends Error {
  * Resolve qual autenticação usar para a próxima chamada.
  * Regra:
  *   1. Se usuário tem key própria → usa ela diretamente (sem proxy)
- *   2. Se proxy configurado e ainda não foi usado → usa proxy + marca como usado
+ *   2. Se proxy configurado, free tier não desabilitado e ainda não foi usado → usa proxy + marca como usado
  *   3. Caso contrário → lança erro pedindo key do usuário
  */
 export async function resolveApiKey(): Promise<KeyResolution> {
@@ -38,7 +38,7 @@ export async function resolveApiKey(): Promise<KeyResolution> {
     }
   }
 
-  if (hasProxy && !state.systemKeyUsed) {
+  if (hasProxy && !state.freeTierDisabled && !state.systemKeyUsed) {
     await setState({ systemKeyUsed: true })
     return {
       isSystemKey: true,
@@ -47,7 +47,7 @@ export async function resolveApiKey(): Promise<KeyResolution> {
   }
 
   throw new ApiKeyError(
-    hasProxy
+    hasProxy && state.systemKeyUsed
       ? 'You have already used your free analysis. Enter your Google Gemini API key to continue.'
       : 'Enter your Google Gemini API key to continue.',
     true,
@@ -69,11 +69,21 @@ export async function markSystemKeyUsed(): Promise<void> {
   await setState({ systemKeyUsed: true })
 }
 
+export async function disableFreeTier(): Promise<void> {
+  await setState({ freeTierDisabled: true })
+}
+
+export async function enableFreeTier(): Promise<void> {
+  await setState({ freeTierDisabled: false })
+}
+
 export async function getKeyStatus() {
   const state = await getState()
   return {
     systemKeyUsed: state.systemKeyUsed,
+    freeTierDisabled: state.freeTierDisabled,
     hasUserKey: !!state.userApiKey,
     analysisCount: state.analysisCount,
+    hasProxy,
   }
 }

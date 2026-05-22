@@ -6,6 +6,7 @@ async function render() {
   const [status, storageState] = await Promise.all([getKeyStatus(), getState()])
   const selectedModel = storageState.geminiModel || DEFAULT_MODEL
   const deepMode = storageState.deepMode
+  const freeTierDisabled = status.freeTierDisabled
 
   const modelItems = GEMINI_MODELS.map(m => `
     <label class="model-item">
@@ -14,6 +15,14 @@ async function render() {
       <span class="tag ${m.free ? 'tag-free' : 'tag-pro'}">${m.free ? 'Free' : 'Pro'}</span>
     </label>
   `).join('')
+
+  // Free query status label: Disabled > Used > Available
+  const freeTierLabel = freeTierDisabled
+    ? 'Disabled'
+    : status.systemKeyUsed ? 'Used' : 'Available'
+  const freeTierClass = freeTierDisabled
+    ? 'used'
+    : status.systemKeyUsed ? '' : 'ok'
 
   const app = document.getElementById('app')!
   app.innerHTML = `
@@ -27,9 +36,7 @@ async function render() {
       <div class="status-card">
         <div class="status-row">
           <span class="status-label">Free query</span>
-          <span class="status-value ${status.systemKeyUsed ? 'used' : 'ok'}">
-            ${status.systemKeyUsed ? 'Used' : 'Available'}
-          </span>
+          <span class="status-value ${freeTierClass}">${freeTierLabel}</span>
         </div>
         <div class="status-row">
           <span class="status-label">Your API key</span>
@@ -81,6 +88,18 @@ async function render() {
             <span class="toggle-thumb"></span>
           </label>
         </div>
+        ${status.hasProxy ? `
+        <div class="toggle-row" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light)">
+          <div class="toggle-info">
+            <span class="toggle-label">Disable free tier</span>
+            <span class="toggle-desc">Use only your API key</span>
+          </div>
+          <label class="toggle-switch" aria-label="Toggle free tier">
+            <input type="checkbox" id="free-tier-toggle" ${freeTierDisabled ? 'checked' : ''} />
+            <span class="toggle-thumb"></span>
+          </label>
+        </div>
+        ` : ''}
       </div>
 
       <div id="msg"></div>
@@ -131,6 +150,12 @@ async function render() {
   document.getElementById('deep-mode-toggle')?.addEventListener('change', (e) => {
     const checked = (e.target as HTMLInputElement).checked
     chrome.runtime.sendMessage({ type: 'SAVE_DEEP_MODE', deepMode: checked })
+  })
+
+  document.getElementById('free-tier-toggle')?.addEventListener('change', async (e) => {
+    const checked = (e.target as HTMLInputElement).checked
+    await chrome.runtime.sendMessage({ type: checked ? 'DISABLE_FREE_TIER' : 'ENABLE_FREE_TIER' })
+    render()
   })
 }
 

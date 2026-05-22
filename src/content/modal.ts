@@ -385,6 +385,16 @@ function buildCSS(): string {
     }
     .rl-toggle-sw input:checked + .rl-toggle-thumb { background: var(--purple); }
     .rl-toggle-sw input:checked + .rl-toggle-thumb::before { transform: translateX(14px); }
+
+    /* ── Disable free tier button ── */
+    .rl-btn--disable-tier {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 7px 16px; font-size: 12px; font-weight: 500;
+      border-radius: 6px; cursor: pointer; border: 1px solid var(--amber);
+      background: var(--amber-bg); color: var(--amber);
+      transition: opacity .12s; margin-top: 10px; width: 100%;
+    }
+    .rl-btn--disable-tier:hover { opacity: .82; }
   `
 }
 
@@ -427,6 +437,31 @@ function deepModeToggleHTML(): string {
   `
 }
 
+/** Rendered hidden by default; shown in wireKeyFormFields if proxy is configured. */
+function freeTierToggleHTML(): string {
+  return `
+    <label class="rl-toggle-row" id="rl-free-tier-toggle-row" style="display:none">
+      <div class="rl-toggle-info">
+        <span class="rl-toggle-lbl">Disable free tier</span>
+        <span class="rl-toggle-desc">Use only your API key</span>
+      </div>
+      <span class="rl-toggle-sw" aria-label="Toggle free tier">
+        <input type="checkbox" id="rl-free-tier-disabled"/>
+        <span class="rl-toggle-thumb"></span>
+      </span>
+    </label>
+  `
+}
+
+/** Button shown on error pages when free tier is available but failing. */
+function disableFreeTierBtnHTML(): string {
+  return `
+    <button class="rl-btn--disable-tier" id="rl-disable-free-tier-btn">
+      ⚡ Disable free tier · use my API key only
+    </button>
+  `
+}
+
 function modelSelectorHTML(): string {
   const items = GEMINI_MODELS.map(m => `
     <label class="rl-model-item">
@@ -456,7 +491,7 @@ function loadingHTML(step: string, percent: number, dark: boolean): string {
   `, dark)
 }
 
-function errorHTML(message: string, requiresKey: boolean, dark: boolean): string {
+function errorHTML(message: string, requiresKey: boolean, dark: boolean, freeTierAvailable = false): string {
   const action = requiresKey
     ? `<p class="rl-ehint">
         Get your free key at
@@ -467,6 +502,8 @@ function errorHTML(message: string, requiresKey: boolean, dark: boolean): string
     : `<button class="rl-btn rl-btn--secondary" id="rl-close-btn">Close</button>
        <button class="rl-keylnk" id="rl-key-btn">${keyIcon()} Configure API key</button>`
 
+  const disableBtn = freeTierAvailable ? disableFreeTierBtnHTML() : ''
+
   return wrapOverlay(`
     <div class="rl-ec">
       <button class="rl-xbtn rl-xbtn--corner" id="rl-close" aria-label="Close">${closeXIcon()}</button>
@@ -474,6 +511,7 @@ function errorHTML(message: string, requiresKey: boolean, dark: boolean): string
       <h3 class="rl-ettl">${requiresKey ? 'API key required' : 'Analysis error'}</h3>
       <p class="rl-emsg">${esc(message)}</p>
       ${action}
+      ${disableBtn}
     </div>
   `, dark)
 }
@@ -493,6 +531,7 @@ function keyFormCardHTML(dark: boolean): string {
       ${keyFormFields()}
       ${modelSelectorHTML()}
       ${deepModeToggleHTML()}
+      ${freeTierToggleHTML()}
       <button class="rl-keylnk" id="rl-cancel">Cancel</button>
     </div>
   `, dark)
@@ -684,6 +723,20 @@ function wireKeyFormFields(shadow: ShadowRoot): void {
     const checked = (e.target as HTMLInputElement).checked
     chrome.runtime.sendMessage({ type: 'SAVE_DEEP_MODE', deepMode: checked })
   })
+
+  // Free tier toggle — show only when proxy is configured
+  chrome.runtime.sendMessage({ type: 'GET_STATUS' }).then((status: { hasProxy?: boolean; freeTierDisabled?: boolean }) => {
+    if (!status?.hasProxy) return
+    const row = shadow.getElementById('rl-free-tier-toggle-row')
+    if (row) row.style.display = 'flex'
+    const toggle = shadow.getElementById('rl-free-tier-disabled') as HTMLInputElement | null
+    if (toggle) toggle.checked = !!status.freeTierDisabled
+  })
+
+  shadow.getElementById('rl-free-tier-disabled')?.addEventListener('change', (e) => {
+    const checked = (e.target as HTMLInputElement).checked
+    chrome.runtime.sendMessage({ type: checked ? 'DISABLE_FREE_TIER' : 'ENABLE_FREE_TIER' })
+  })
 }
 
 function wireKeyBtn(shadow: ShadowRoot): void {
@@ -722,8 +775,17 @@ export function showResult(result: AnalysisResult): void {
   })
 }
 
-export function showError(message: string, requiresApiKey = false): void {
-  const shadow = render(errorHTML(message, requiresApiKey, isDark()))
+export async function showError(message: string, requiresApiKey = false): Promise<void> {
+  // Check if free tier is still available (proxy configured, not used, not disabled)
+  let freeTierAvailable = false
+  try {
+    const status = await chrome.runtime.sendMessage({ type: 'GET_STATUS' }) as {
+      hasProxy?: boolean; systemKeyUsed?: boolean; freeTierDisabled?: boolean
+    }
+    freeTierAvailable = !!(status?.hasProxy && !status?.systemKeyUsed && !status?.freeTierDisabled)
+  } catch { /* ignore — leave freeTierAvailable = false */ }
+
+  const shadow = render(errorHTML(message, requiresApiKey, isDark(), freeTierAvailable))
   shadow.getElementById('rl-close')?.addEventListener('click', closeModal)
   shadow.getElementById('rl-close-btn')?.addEventListener('click', closeModal)
   document.addEventListener('keydown', onEsc)
@@ -733,6 +795,12 @@ export function showError(message: string, requiresApiKey = false): void {
   } else {
     wireKeyBtn(shadow)
   }
+
+  // Wire the "Disable free tier" button if present
+  shadow.getElementById('rl-disable-free-tier-btn')?.addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'DISABLE_FREE_TIER' })
+    closeModal()
+  })
 }
 
 function lockScroll(): void {
