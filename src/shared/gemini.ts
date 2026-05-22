@@ -184,6 +184,14 @@ export async function analyzeWithGemini(
         }
         throw new Error('Invalid API key. Check in the extension settings.')
       }
+
+      if (code === 503 || data.error.status === 'UNAVAILABLE') {
+        throw new Error(
+          'The Gemini API is temporarily overloaded — this is an external issue on Google\'s side. ' +
+          'Try switching to a different model in the extension settings (e.g. Flash Lite), or wait a few minutes and try again.',
+        )
+      }
+
       throw new Error(`Gemini API [${code}]: ${message}`)
     }
 
