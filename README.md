@@ -2,7 +2,7 @@
 
 **AI-powered code quality analysis for GitHub repositories — right in your browser.**
 
-RepoLogs is a Chrome extension that injects an analysis button into any public GitHub repository page. One click triggers an intelligent file sampling pipeline, sends the code to Google Gemini, and renders a detailed quality report — score, grade, architecture rating, security flags, strengths, weaknesses, and actionable recommendations — without leaving GitHub.
+RepoLogs is a Chrome extension that injects an analysis button into any public GitHub repository page. One click triggers an intelligent repository-mapping and file-sampling pipeline, sends the code plus repository structure context to Google Gemini, and renders a detailed quality report — score, grade, architecture rating, security flags, strengths, weaknesses, and actionable recommendations — without leaving GitHub.
 
 ---
 
@@ -14,6 +14,7 @@ RepoLogs is a Chrome extension that injects an analysis button into any public G
 - **Architecture evaluation** — dedicated rating with qualitative notes
 - **Intelligent file sampling** — priority files (README, package.json, Dockerfile, CI configs) + centrality-based code file selection; ignores `node_modules`, `dist`, tests, lock files, and binaries
   - **Dependency graph** — all sampled files are scanned for `import`/`require` statements to build a directed dependency graph; each edge represents one file importing another. Files are then ranked by **in-degree** (number of other files that import them), so the most architecturally central modules rise to the top of the selection pool. Priority files always occupy the first slots regardless of in-degree.
+- **Repository structure context** — the full repository file map is compacted into a filtered directory tree and included in the Gemini prompt so the model knows which files exist even when only a subset of file contents is loaded
 - **Deep mode** — increases per-file line budget from 150 → 350 lines for larger codebases
 - **Multiple Gemini models** — Gemini 2.5 Flash (default), 2.5 Flash Lite, or 2.5 Pro
 - **Free tier** — one free analysis using the system key; unlimited with your own Gemini API key
@@ -41,12 +42,13 @@ Content Script → Background Worker
         │
         ├─ 1. Fetch repo metadata (default branch, latest SHA)
         ├─ 2. Fetch full file tree via GitHub API
-        ├─ 3. Sample up to 80 files (priority + code files)
-        ├─ 4. Read file contents — 8 concurrent requests via raw CDN (no API rate limit), max 150/350 lines each
-        ├─ 5. Build dependency graph → rank files by import centrality
-        ├─ 6. Select top 40 files within token budget
-        ├─ 7. Call Gemini API with structured prompt
-        └─ 8. Cache result and send to content script
+        ├─ 3. Build a filtered directory tree from the full repo file list
+        ├─ 4. Sample up to 80 files (priority + code files)
+        ├─ 5. Read file contents — 8 concurrent requests via raw CDN (no API rate limit), max 150/350 lines each
+        ├─ 6. Build dependency graph → rank files by import centrality
+        ├─ 7. Select top 40 files within token budget
+        ├─ 8. Call Gemini API with sampled code + repository structure prompt context
+        └─ 9. Cache result and send to content script
                 │
                 ▼
         Modal rendered with full report
@@ -164,10 +166,10 @@ src/
 └── shared/
     ├── types.ts             # Shared TypeScript interfaces
     ├── api-key-manager.ts   # System key vs. user key resolution
-    ├── gemini.ts            # Gemini API client
+    ├── gemini.ts            # Gemini API client and analysis request assembly
     ├── github.ts            # GitHub API client (tree, file content)
-    ├── sampler.ts           # Intelligent file sampling and centrality ranking
-    ├── prompt.ts            # Gemini system + user prompts
+    ├── sampler.ts           # Intelligent file sampling, centrality ranking, and directory-tree compaction
+    ├── prompt.ts            # Gemini system + user prompts, including repository structure context
     └── storage.ts           # Chrome storage wrapper + cache management
 ```
 
