@@ -1,6 +1,6 @@
 import { resolveApiKey, ApiKeyError, saveUserApiKey, clearUserApiKey, getKeyStatus, markSystemKeyUsed, disableFreeTier, enableFreeTier } from '../shared/api-key-manager'
 import { getRepoInfo, getFileTree, fetchFiles } from '../shared/github'
-import { sampleFiles, buildContext, buildDepGraph, selectByCentrality, isPriority, estimateTokens } from '../shared/sampler'
+import { sampleFiles, buildContext, buildDepGraph, selectByCentrality, isPriority, estimateTokens, buildDirectoryTree } from '../shared/sampler'
 import { analyzeWithGemini, DEFAULT_MODEL } from '../shared/gemini'
 import { setCachedAnalysis, setState, getState, setLastResult } from '../shared/storage'
 import type { MessageType} from '../shared/types'
@@ -54,6 +54,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
     sendToTab(tabId, { type: 'ANALYSIS_PROGRESS', step: 'Mapping files...', percent: 15 })
 
     const tree = await getFileTree(repoInfo)
+    const directoryTree = buildDirectoryTree(tree)
     const sampled = sampleFiles(tree, { maxFiles: 80 })
 
     sendToTab(tabId, {
@@ -122,6 +123,7 @@ async function handleAnalysis(tabId: number, owner: string, repo: string) {
           percent: 66,
         })
       },
+      directoryTree,
     )
 
     const state = await getState()

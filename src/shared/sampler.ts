@@ -28,6 +28,30 @@ const CODE_EXTENSIONS = new Set([
   '.env.example', '.env.sample',
 ])
 
+// Padrões a ignorar no mapa de estrutura (exclui ruído, MAS mantém arquivos de teste)
+const TREE_IGNORE_PATTERNS = [
+  /node_modules\//,
+  /\.git\//,
+  /dist\//,
+  /build\//,
+  /\.next\//,
+  /\.nuxt\//,
+  /coverage\//,
+  /\.cache\//,
+  /vendor\//,
+  /target\//,
+  /\.min\.(js|css)$/,
+  /\.lock$/,
+  /package-lock\.json$/,
+  /yarn\.lock$/,
+  /pnpm-lock\.yaml$/,
+  /\.map$/,
+  /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/,
+  /\.(pdf|zip|tar|gz|mp4|mp3)$/,
+]
+
+const MAX_TREE_FILES = 500
+
 // Padrões a ignorar completamente
 const IGNORE_PATTERNS = [
   /node_modules\//,
@@ -237,6 +261,24 @@ export function buildContext(
   }
 
   return result
+}
+
+/**
+ * Gera um mapa compacto de todos os arquivos do repositório.
+ * Exclui ruído (node_modules, binários, lock files), mas MANTÉM arquivos de
+ * teste para que a IA saiba que eles existem mesmo sem ter acesso ao conteúdo.
+ */
+export function buildDirectoryTree(tree: FileEntry[]): string {
+  const visible = tree
+    .filter((f) => !TREE_IGNORE_PATTERNS.some((p) => p.test(f.path)))
+    .map((f) => f.path)
+    .sort()
+
+  const truncationNote = visible.length > MAX_TREE_FILES
+    ? `\n... and ${visible.length - MAX_TREE_FILES} more files (truncated)`
+    : ''
+
+  return visible.slice(0, MAX_TREE_FILES).join('\n') + truncationNote
 }
 
 export { estimateTokens }

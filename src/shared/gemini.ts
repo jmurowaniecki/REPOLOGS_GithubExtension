@@ -85,9 +85,10 @@ export async function analyzeWithGemini(
   files: Array<{ path: string; content: string }>,
   model: string = DEFAULT_MODEL,
   onRetry?: (waitSecs: number) => void,
+  directoryTree?: string,
 ): Promise<AnalysisResult> {
   const systemPrompt = buildSystemPrompt()
-  const userPrompt = buildUserPrompt(owner, repo, files)
+  const userPrompt = buildUserPrompt(owner, repo, files, directoryTree)
 
   const geminiBody = {
     system_instruction: {

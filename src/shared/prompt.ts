@@ -122,7 +122,15 @@ export function buildUserPrompt(
   owner: string,
   repo: string,
   files: Array<{ path: string; content: string }>,
+  directoryTree?: string,
 ): string {
+  const treeSection = directoryTree
+    ? `\n⚠️ IMPORTANT: You only have the full contents of ${files.length} files below. ` +
+      `The complete repository structure is listed here — do NOT claim a file is absent if it appears in this list. ` +
+      `In particular, if test files appear in the structure, the project HAS tests even if their content was not included.\n\n` +
+      `=== REPOSITORY STRUCTURE ===\n${directoryTree}\n=== END STRUCTURE ===\n`
+    : ''
+
   const filesSerialized = files
     .map(
       ({ path, content }) =>
@@ -133,7 +141,7 @@ export function buildUserPrompt(
   return `Repository: ${owner}/${repo}
 URL: https://github.com/${owner}/${repo}
 Analyzed files: ${files.length}
-
+${treeSection}
 ${filesSerialized}
 
 Analyze this repository and return the JSON as instructed.`
